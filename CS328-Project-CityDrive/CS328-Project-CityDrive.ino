@@ -131,6 +131,7 @@ void writetext(int x) {
 // Motor control
 // ============================
 void Forward(int speed) {
+  HEADLights(); //second requirement
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed);
 
@@ -144,6 +145,7 @@ void Forward(int speed) {
 }
 
 void Backward(int speed) {
+  HEADLights(); //second requirement
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed);
 
@@ -159,7 +161,7 @@ void Backward(int speed) {
 void Left(int speed) 
 {
   OFFLights();
-  LEFTLights();
+  LEFTLights(); //THESE NEED TO BLINK
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed - 20);
   
@@ -175,7 +177,7 @@ void Left(int speed)
 void Right(int speed)
 {
   OFFLights();
-  RIGHTLights();
+  RIGHTLights(); //THESE NEED TO BLINK
   analogWrite(MotorPWM_L, speed - 20);
   analogWrite(MotorPWM_R, speed);
   
@@ -274,25 +276,26 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
     if (Serial2.available()) {
+
     char cmd = Serial2.read();
 
-    if (cmd == 'F') {
-      Forward(128);
-    }
-    else if (cmd == 'B') {
-      Backward(128);
-    }
-    else if (cmd == 'S') {
-      StopMotors();
-    }
-    else if (cmd == 'L') {
-      Left(100);
-    }
-    else if (cmd == 'R') {
-      Right(100);
-    }
-    else if (cmd == 'Q'){ //these were all calibrated using a dead ish battery
-      
-    }
+      if (cmd == 'F') {
+        Forward(128);
+      }
+      else if (cmd == 'B') {
+        Backward(128);
+      }
+      else if (cmd == 'S') {
+        StopMotors();
+      }
+      else if (cmd == 'L') {
+        Left(100);
+      }
+      else if (cmd == 'R') {
+        Right(100);
+      }
+      else if (cmd == 'Q') {
+        
+      }
   }
 }
