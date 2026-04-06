@@ -287,33 +287,7 @@ void loop() {
       Right(100);
     }
     else if (cmd == 'Q'){ //these were all calibrated using a dead ish battery
-      int speed = 200;
-      Forward(speed);
-      delay(360);
       
-      Halt(speed); //First turn
-      delay(500);
-      Turn(speed, 85);
-      delay(105);
-      Accelerate(speed);
-      delay(290); //ms //was 300
-
-      Halt(speed); //Second turn
-      delay(500);
-      Turn(speed, 95);
-      delay(105);
-      Accelerate(speed);      
-      delay(280);
-
-      Halt(speed); //Third turn
-      delay(500);
-      Turn(speed, 90);
-      delay(105);
-      Accelerate(speed);      
-      delay(270); //ms //was 280
-
-      Halt(speed); //Stops at beginning point (hopefully.)
-      StopMotors();
     }
   }
 }
