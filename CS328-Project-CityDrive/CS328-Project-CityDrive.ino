@@ -94,6 +94,11 @@ void ONLights(){
   digitalWrite(RIGHTFRONT, HIGH);
 }
 
+void HEADLights(){
+  digitalWrite(LEFTFRONT, HIGH);
+  digitalWrite(RIGHTFRONT, HIGH);
+}
+
 void BREAKLights(){
   digitalWrite(LEFTREAR, HIGH);
   digitalWrite(RIGHTREAR, HIGH);
