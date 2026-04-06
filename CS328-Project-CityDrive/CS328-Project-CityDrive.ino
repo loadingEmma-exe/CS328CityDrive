@@ -29,6 +29,10 @@
 #define MotorPWM_B 5 //right motor
 #define BLUETOOTH_BAUD_RATE 38400
 
+//Turn Defs
+int right = 0;
+int left = 0;
+
 // Motor pins
 #define MotorPWM_L 4   // left motor PWM
 #define MotorPWM_R 5   // right motor PWM
@@ -97,6 +101,14 @@ void ONLights(){
 void HEADLights(){
   digitalWrite(LEFTFRONT, HIGH);
   digitalWrite(RIGHTFRONT, HIGH);
+  
+  //adding blink logic for one of the headlights
+  if(left){ //if turning left
+
+  }
+  else if (right){ //if turning right
+
+  }
 }
 
 void BREAKLights(){
@@ -160,7 +172,6 @@ void Backward(int speed) {
 
 void Left(int speed) 
 {
-  OFFLights();
   LEFTLights(); //THESE NEED TO BLINK
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed - 20);
@@ -176,7 +187,6 @@ void Left(int speed)
 
 void Right(int speed)
 {
-  OFFLights();
   RIGHTLights(); //THESE NEED TO BLINK
   analogWrite(MotorPWM_L, speed - 20);
   analogWrite(MotorPWM_R, speed);
