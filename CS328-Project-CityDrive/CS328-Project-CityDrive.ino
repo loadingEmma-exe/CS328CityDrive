@@ -3,7 +3,7 @@
 
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_GFX.h"
-
+#include "protothreads.h" //protothreading
 #include <SoftwareSerial.h>
 
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
@@ -101,14 +101,6 @@ void ONLights(){
 void HEADLights(){
   digitalWrite(LEFTFRONT, HIGH);
   digitalWrite(RIGHTFRONT, HIGH);
-  
-  //adding blink logic for one of the headlights
-  if(left){ //if turning left
-
-  }
-  else if (right){ //if turning right
-
-  }
 }
 
 void BREAKLights(){
@@ -172,7 +164,7 @@ void Backward(int speed) {
 
 void Left(int speed) 
 {
-  LEFTLights(); //THESE NEED TO BLINK
+  LEFTLights();
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed - 20);
   
@@ -218,7 +210,6 @@ void Halt(int startSpeed)
     delay(20);
   }
   StopMotors();
-  
 }
 
 void Turn(int maxSpeed, int turnTime)
