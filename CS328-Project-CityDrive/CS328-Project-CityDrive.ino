@@ -29,6 +29,13 @@
 #define MotorPWM_B 5 //right motor
 #define BLUETOOTH_BAUD_RATE 38400
 
+//protothreads
+pt ptBlink;
+pt ptCamera;
+pt ptMovement;
+pt ptMusic;
+pt ptOLED;
+
 //Turn Defs
 int right = 0;
 int left = 0;
@@ -59,28 +66,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init
 volatile long count_left = 0;
 volatile long count_right = 0;
 
-// ============================
-// RPM conversion
-// For 100 ms sample time:
-// RPM = counts * 3.125
-// because 60/0.1 / (48*4) = 3.125
-// ============================
-float rotation = 3.125;
-int pwm = 0;
-
-// sample time in ms
-const unsigned long sampleTime = 100;
-
-// ============================
-// Interrupt service routines
-// ============================
-void ISRMotorLeft() {
-  count_left++;
-}
-
-void ISRMotorRight() {
-  count_right++;
-}
 // ============================
 // Light control
 // ============================
@@ -135,7 +120,6 @@ void writetext(int x) {
 // Motor control
 // ============================
 void Forward(int speed) {
-  HEADLights(); //second requirement
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed);
 
@@ -149,7 +133,6 @@ void Forward(int speed) {
 }
 
 void Backward(int speed) {
-  HEADLights(); //second requirement
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed);
 
@@ -164,7 +147,6 @@ void Backward(int speed) {
 
 void Left(int speed) 
 {
-  LEFTLights();
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed - 20);
   
@@ -179,7 +161,6 @@ void Left(int speed)
 
 void Right(int speed)
 {
-  RIGHTLights(); //THESE NEED TO BLINK
   analogWrite(MotorPWM_L, speed - 20);
   analogWrite(MotorPWM_R, speed);
   
@@ -202,9 +183,9 @@ void StopMotors() {
   digitalWrite(INA2B, LOW);
 }
 
+//generalized movement routines
 void Halt(int startSpeed)
 {
-  BREAKLights();
   for (int s = startSpeed; s > 0; s -= 20) {
     Forward(s);
     delay(20);
@@ -224,14 +205,13 @@ void Turn(int maxSpeed, int turnTime)
 
 void Accelerate(int maxSpeed)
 {
-  OFFLights();
   for (int s = 80; s <= maxSpeed; s += 20) {
     Forward(s);
     delay(20);
   }
 }
 
-//Setup function.
+//Setup function
 void setup() {
   Serial.begin(9600);
   Serial2.begin(BLUETOOTH_BAUD_RATE);
