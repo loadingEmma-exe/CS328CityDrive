@@ -30,6 +30,8 @@
 #define BLUETOOTH_BAUD_RATE 38400
 
 //protothreads
+int PTdelay = 100;
+
 pt ptBlink;
 pt ptCamera;
 pt ptMovement;
@@ -183,7 +185,9 @@ void StopMotors() {
   digitalWrite(INA2B, LOW);
 }
 
-//generalized movement routines
+// ============================
+// General Movement Routines
+// ============================
 void Halt(int startSpeed)
 {
   for (int s = startSpeed; s > 0; s -= 20) {
@@ -211,7 +215,25 @@ void Accelerate(int maxSpeed)
   }
 }
 
-//Setup function
+// ============================
+// Protothreading
+// ============================
+int blinkThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+    //action
+    PT_SLEEP(mythread, PTdelay);
+    //action
+    PT_SLEEP(mythread, PTdelay);
+  }
+
+  PT_END(mythread);
+}
+
+// ============================
+// SETUP 
+// ============================
 void setup() {
   Serial.begin(9600);
   Serial2.begin(BLUETOOTH_BAUD_RATE);
@@ -238,6 +260,9 @@ void setup() {
   pinMode(RIGHTFRONT, OUTPUT);
   pinMode(LEFTREAR, OUTPUT);
   pinMode(RIGHTREAR, OUTPUT);
+
+  //pt setup
+  PT_INIT(&ptBlink);
 
   attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT), ISRMotorLeft, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT), ISRMotorRight, FALLING);
@@ -276,7 +301,7 @@ void loop() {
         Right(100);
       }
       else if (cmd == 'Q') {
-        
+        PT_SCHEDULE(blinkThread(&ptBlink)); //pt blink
       }
   }
 }
