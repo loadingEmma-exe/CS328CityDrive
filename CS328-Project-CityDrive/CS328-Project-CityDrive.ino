@@ -231,6 +231,19 @@ int blinkThread(struct pt* mythread){
   PT_END(mythread);
 }
 
+int musicThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+    //action
+    PT_SLEEP(mythread, PTdelay);
+    //action
+    PT_SLEEP(mythread, PTdelay);
+  }
+
+  PT_END(mythread);
+}
+
 // ============================
 // SETUP 
 // ============================
