@@ -93,6 +93,11 @@
 #define NOTE_DS8 4978
 #define REST      0
 
+#define echoPin 22
+#define trigPin 23
+long duration;
+float distance;
+
 /*Buzzer Music Stuff*/
 
 // change this to make the song slower or faster
@@ -136,9 +141,9 @@ Servo myServo;
 // Defines the number of steps per rotation
 
 // Servo angles
-int dirLeft = 60;
-int dirStraight = 89;
-int dirRight = 120;
+int dirLeft = 120;
+int dirStraight = 95;
+int dirRight = 60;
 
 
 void setup() {
@@ -148,6 +153,10 @@ void setup() {
   myServo.write(dirStraight); // start centered
 
   // Serial.println("Commands: L (left), C (center), R (right)");
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  Serial.begin(9600);
 
 for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
@@ -168,20 +177,36 @@ for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 }
 
 void loop() {
+  // Set the trigPin condition
+digitalWrite(trigPin, LOW);
+delayMicroseconds(2);
+// Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+// The pulseIn function times the signal return after bouncing off the object
+duration = pulseIn(echoPin, HIGH);
+// Calculating the distance
+distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+// Displays the distance on the Serial Monitor
+Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+delay(100);
+
+
   if (Serial.available() > 0) {
     char cmd = Serial.read();
 
     if (cmd == 'L' || cmd == 'l') {
       myServo.write(dirLeft);
-      Serial.println("Moved Left (60°)");
+      Serial.println("Moved Left");
     }
     else if (cmd == 'C' || cmd == 'c') {
       myServo.write(dirStraight);
-      Serial.println("Centered (90°)");
+      Serial.println("Centered");
     }
     else if (cmd == 'R' || cmd == 'r') {
       myServo.write(dirRight);
-      Serial.println("Moved Right (120°)");
+      Serial.println("Moved Right");
     }
   }
 }
