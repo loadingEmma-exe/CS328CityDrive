@@ -5,6 +5,99 @@
 #include "Adafruit_GFX.h"
 #include "protothreads.h" //protothreading
 #include <SoftwareSerial.h>
+#include <Servo.h>
+
+//Music note definitions
+#define NOTE_B0  31
+#define NOTE_C1  33
+#define NOTE_CS1 35
+#define NOTE_D1  37
+#define NOTE_DS1 39
+#define NOTE_E1  41
+#define NOTE_F1  44
+#define NOTE_FS1 46
+#define NOTE_G1  49
+#define NOTE_GS1 52
+#define NOTE_A1  55
+#define NOTE_AS1 58
+#define NOTE_B1  62
+#define NOTE_C2  65
+#define NOTE_CS2 69
+#define NOTE_D2  73
+#define NOTE_DS2 78
+#define NOTE_E2  82
+#define NOTE_F2  87
+#define NOTE_FS2 93
+#define NOTE_G2  98
+#define NOTE_GS2 104
+#define NOTE_A2  110
+#define NOTE_AS2 117
+#define NOTE_B2  123
+#define NOTE_C3  131
+#define NOTE_CS3 139
+#define NOTE_D3  147
+#define NOTE_DS3 156
+#define NOTE_E3  165
+#define NOTE_F3  175
+#define NOTE_FS3 185
+#define NOTE_G3  196
+#define NOTE_GS3 208
+#define NOTE_A3  220
+#define NOTE_AS3 233
+#define NOTE_B3  247
+#define NOTE_C4  262
+#define NOTE_CS4 277
+#define NOTE_D4  294
+#define NOTE_DS4 311
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_FS4 370
+#define NOTE_G4  392
+#define NOTE_GS4 415
+#define NOTE_A4  440
+#define NOTE_AS4 466
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_CS5 554
+#define NOTE_D5  587
+#define NOTE_DS5 622
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_FS5 740
+#define NOTE_G5  784
+#define NOTE_GS5 831
+#define NOTE_A5  880
+#define NOTE_AS5 932
+#define NOTE_B5  988
+#define NOTE_C6  1047
+#define NOTE_CS6 1109
+#define NOTE_D6  1175
+#define NOTE_DS6 1245
+#define NOTE_E6  1319
+#define NOTE_F6  1397
+#define NOTE_FS6 1480
+#define NOTE_G6  1568
+#define NOTE_GS6 1661
+#define NOTE_A6  1760
+#define NOTE_AS6 1865
+#define NOTE_B6  1976
+#define NOTE_C7  2093
+#define NOTE_CS7 2217
+#define NOTE_D7  2349
+#define NOTE_DS7 2489
+#define NOTE_E7  2637
+#define NOTE_F7  2794
+#define NOTE_FS7 2960
+#define NOTE_G7  3136
+#define NOTE_GS7 3322
+#define NOTE_A7  3520
+#define NOTE_AS7 3729
+#define NOTE_B7  3951
+#define NOTE_C8  4186
+#define NOTE_CS8 4435
+#define NOTE_D8  4699
+#define NOTE_DS8 4978
+#define REST      0
 
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -29,6 +122,12 @@
 #define MotorPWM_B 5 //right motor
 #define BLUETOOTH_BAUD_RATE 38400
 
+//Ultrasonic sensor
+#define echoPin 22
+#define trigPin 23
+long duration;
+float distance;
+
 //protothreads
 int PTdelay = 100;
 
@@ -47,6 +146,12 @@ int hazards = 0;
 //Timer
 int globalTime = 0;
 int ptTime = 0;
+
+//Music
+int tempo = 125;
+
+//Buzzer pin
+int buzzer = 11;
 
 // Motor pins
 #define MotorPWM_L 4   // left motor PWM
@@ -67,6 +172,52 @@ int ptTime = 0;
 #define ENCODER_RIGHT 3
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init display
+//=============================
+// Music
+//=============================
+
+// int melody[] = { //Dearly Beloved - Kingdom Hearts 1
+//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
+
+//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
+
+//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+//   NOTE_G5,4,
+
+//   NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
+
+//   NOTE_F5,8,
+
+//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+//   NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
+// };
+
+int melody[] = { //Final Fantasy Victory Jingle
+  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
+  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
+  NOTE_E5,4
+};
+
+int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+
+// this calculates the duration of a whole note in ms
+int wholenote = (60000 * 4) / tempo;
+int divider = 0, noteDuration = 0;
+
+//============================
+// Servo
+//============================
+
+/*Servomotor*/
+Servo myServo;
+// Defines the number of steps per rotation
+
+// Servo angles
+int dirLeft = 120;
+int dirStraight = 95;
+int dirRight = 60;
 
 // ============================
 // Encoder counters
@@ -163,8 +314,7 @@ void Backward(int speed) {
   digitalWrite(INA2B, HIGH);
 }
 
-void Left(int speed) 
-{
+void Left(int speed) {
   moving = 1;
   left = 1;
   right = 0;
@@ -182,8 +332,7 @@ void Left(int speed)
   digitalWrite(INA2B, LOW);
 }
 
-void Right(int speed)
-{
+void Right(int speed){
   moving = 1;
   left = 0;
   right = 1;
@@ -277,7 +426,15 @@ int musicThread(struct pt* mythread){
 // ============================
 void setup() {
   Serial.begin(9600);
+  myServo.attach(13); //Pin for servomotor input.
+  myServo.write(dirStraight); // start centered
   Serial2.begin(BLUETOOTH_BAUD_RATE);
+
+  // Serial.println("Commands: L (left), C (center), R (right)");
+
+  //Ultrasonic sensor
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 
   // Motor pins
   pinMode(MotorPWM_L, OUTPUT);
@@ -305,6 +462,23 @@ void setup() {
   //pt setup
   PT_INIT(&ptBlink);
 
+  //MUSIC PLAY (NEEDS TO BE PUT IN PROTOTHREAD)
+  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+
+  divider = melody[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+}
+
   //attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT), ISRMotorLeft, FALLING);
   //attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT), ISRMotorRight, FALLING);
 
@@ -326,51 +500,77 @@ void loop() {
 
     char cmd = Serial2.read();
 
-      if (cmd == 'F') {
+    if (cmd == 'L' || cmd == 'l') {
+      myServo.write(dirLeft);
+      Serial.println("Moved Left");
+    }
+    else if (cmd == 'C' || cmd == 'c') {
+      myServo.write(dirStraight);
+      Serial.println("Centered");
+    }
+    else if (cmd == 'R' || cmd == 'r') {
+      myServo.write(dirRight);
+      Serial.println("Moved Right");
+    }
+    else if (cmd == 'F') {
         Forward(128);
-      }
-      else if (cmd == 'B') {
+    }
+    else if (cmd == 'B') {
         Backward(128);
-      }
-      else if (cmd == 'S') {
+    }
+    else if (cmd == 'S') {
         StopMotors();
+    }
+    else if (cmd == 'LEFT') {
+      Left(100);
+    }
+    else if (cmd == 'RIGHT') {
+      Right(100);
+    }
+    else if (cmd == 'Q') {
+      //PT_SCHEDULE(blinkThread(&ptBlink)); //pt blink
+      if (moving){ //first requirement
+        HEADLights();
+        globalTime = 0;
       }
-      else if (cmd == 'L') {
-        Left(100);
+      else if(!moving){
+        OFFLights();
+        globalTime += ptTime;
       }
-      else if (cmd == 'R') {
-        Right(100);
+
+      if (left){ //second
+        LEFTLights();
       }
-      else if (cmd == 'Q') {
-        //PT_SCHEDULE(blinkThread(&ptBlink)); //pt blink
-        if (moving){ //first requirement
-          HEADLights();
-          globalTime = 0;
-        }
-        else if(!moving){
-          OFFLights();
-          globalTime += pTime;
-        }
-
-        if (left){ //second
-          LEFTLights();
-        }
-        else if(right){
-          RIGHTLights();
-        }
-        else if(moving){
-          OFFLights();
-          HEADLights();
-        }
-
-        if (globalTime > 2 * pTime){
-          hazards = 1;
-        }
-
-        if(hazards){
-          HAZARDLights();
-        }
-
+      else if(right){
+        RIGHTLights();
       }
+      else if(moving){
+        OFFLights();
+        HEADLights();
+      }
+
+      if (globalTime > 2 * ptTime){
+        hazards = 1;
+      }
+
+      if(hazards){
+        //add hazards
+      }
+
+      // Set the trigPin condition
+      digitalWrite(trigPin, LOW);
+      delayMicroseconds(2);
+      // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+      digitalWrite(trigPin, HIGH);
+      delayMicroseconds(10);
+      digitalWrite(trigPin, LOW);
+      // The pulseIn function times the signal return after bouncing off the object
+      duration = pulseIn(echoPin, HIGH);
+      // Calculating the distance
+      distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+      // Displays the distance on the Serial Monitor
+      Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+      delay(100);
+    }
   }
 }
