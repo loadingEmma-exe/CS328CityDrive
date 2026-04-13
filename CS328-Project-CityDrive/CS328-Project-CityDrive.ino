@@ -41,6 +41,12 @@ pt ptOLED;
 //Turn Defs
 int right = 0;
 int left = 0;
+int moving = 0;
+int hazards = 0;
+
+//Timer
+int globalTime = 0;
+int ptTime = 0;
 
 // Motor pins
 #define MotorPWM_L 4   // left motor PWM
@@ -122,6 +128,11 @@ void writetext(int x) {
 // Motor control
 // ============================
 void Forward(int speed) {
+  moving = 1;
+  left = 0;
+  right = 0;
+  hazards = 0;
+
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed);
 
@@ -135,6 +146,11 @@ void Forward(int speed) {
 }
 
 void Backward(int speed) {
+  moving = 1;
+  left = 0;
+  right = 0;
+  hazards = 0; //should this be on?
+
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed);
 
@@ -149,6 +165,11 @@ void Backward(int speed) {
 
 void Left(int speed) 
 {
+  moving = 1;
+  left = 1;
+  right = 0;
+  hazards = 0;
+
   analogWrite(MotorPWM_L, speed);
   analogWrite(MotorPWM_R, speed - 20);
   
@@ -163,6 +184,11 @@ void Left(int speed)
 
 void Right(int speed)
 {
+  moving = 1;
+  left = 0;
+  right = 1;
+  hazards = 0;
+
   analogWrite(MotorPWM_L, speed - 20);
   analogWrite(MotorPWM_R, speed);
   
@@ -183,13 +209,17 @@ void StopMotors() {
   digitalWrite(INA2A, LOW);
   digitalWrite(INA1B, LOW);
   digitalWrite(INA2B, LOW);
+
+  moving = 0;
+  left = 0;
+  right = 0;
+  hazards = 0;
 }
 
 // ============================
 // General Movement Routines
 // ============================
-void Halt(int startSpeed)
-{
+void Halt(int startSpeed){
   for (int s = startSpeed; s > 0; s -= 20) {
     Forward(s);
     delay(20);
@@ -197,8 +227,7 @@ void Halt(int startSpeed)
   StopMotors();
 }
 
-void Turn(int maxSpeed, int turnTime)
-{
+void Turn(int maxSpeed, int turnTime){
   for (int s = 80; s <= maxSpeed; s += 20) {
     Right(s);
     delay(20);
@@ -207,8 +236,7 @@ void Turn(int maxSpeed, int turnTime)
   StopMotors();
 }
 
-void Accelerate(int maxSpeed)
-{
+void Accelerate(int maxSpeed){
   for (int s = 80; s <= maxSpeed; s += 20) {
     Forward(s);
     delay(20);
@@ -277,8 +305,8 @@ void setup() {
   //pt setup
   PT_INIT(&ptBlink);
 
-  attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT), ISRMotorLeft, FALLING);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT), ISRMotorRight, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT), ISRMotorLeft, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT), ISRMotorRight, FALLING);
 
   StopMotors();
   delay(1000);
@@ -314,7 +342,35 @@ void loop() {
         Right(100);
       }
       else if (cmd == 'Q') {
-        PT_SCHEDULE(blinkThread(&ptBlink)); //pt blink
+        //PT_SCHEDULE(blinkThread(&ptBlink)); //pt blink
+        if (moving){ //first requirement
+          HEADLights();
+          globalTime = 0;
+        }
+        else if(!moving){
+          OFFLights();
+          globalTime += pTime;
+        }
+
+        if (left){ //second
+          LEFTLights();
+        }
+        else if(right){
+          RIGHTLights();
+        }
+        else if(moving){
+          OFFLights();
+          HEADLights();
+        }
+
+        if (globalTime > 2 * pTime){
+          hazards = 1;
+        }
+
+        if(hazards){
+          HAZARDLights();
+        }
+
       }
   }
 }
