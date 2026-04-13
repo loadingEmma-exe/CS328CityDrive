@@ -177,22 +177,6 @@ for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 }
 
 void loop() {
-  // Set the trigPin condition
-digitalWrite(trigPin, LOW);
-delayMicroseconds(2);
-// Sets the trigPin HIGH (ACTIVE) for 10 microseconds
-digitalWrite(trigPin, HIGH);
-delayMicroseconds(10);
-digitalWrite(trigPin, LOW);
-// The pulseIn function times the signal return after bouncing off the object
-duration = pulseIn(echoPin, HIGH);
-// Calculating the distance
-distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
-// Displays the distance on the Serial Monitor
-Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
-delay(100);
-
-
   if (Serial.available() > 0) {
     char cmd = Serial.read();
 
@@ -209,4 +193,20 @@ delay(100);
       Serial.println("Moved Right");
     }
   }
+
+    // Set the trigPin condition
+digitalWrite(trigPin, LOW);
+delayMicroseconds(2);
+// Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+// The pulseIn function times the signal return after bouncing off the object
+duration = pulseIn(echoPin, HIGH);
+// Calculating the distance
+distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+// Displays the distance on the Serial Monitor
+Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+delay(100);
+
 }
