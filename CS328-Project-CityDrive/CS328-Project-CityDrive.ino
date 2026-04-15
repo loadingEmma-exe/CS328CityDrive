@@ -7,6 +7,75 @@
 #include <SoftwareSerial.h>
 #include <Servo.h>
 
+#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+#define LOGO_WIDTH 8 // OLED display width, in pixels
+#define LOGO_HEIGHT 8 // OLED display height, in pixels
+
+//Color definitions
+#define BLACK 0x000000
+#define BLUE 0x0000FF
+#define RED 0xFF0000
+#define GREEN 0x00FF00
+#define CYAN 0x00FFFF
+#define MAGENTA 0xFF00FF
+#define YELLOW 0xFFFF00
+#define WHITE 0xFFFFF
+
+#define MotorPWM_A 4 //left motor
+#define MotorPWM_B 5 //right motor
+#define BLUETOOTH_BAUD_RATE 38400
+
+//Ultrasonic sensor
+#define echoPin 22
+#define trigPin 23
+long duration;
+float distance;
+
+//protothreads
+int PTdelay = 100;
+
+pt ptBlink;
+pt ptCamera;
+pt ptMovement;
+pt ptMusic;
+pt ptOLED;
+
+//Turn Defs
+int right = 0;
+int left = 0;
+int moving = 0;
+int hazards = 0;
+
+//Timer
+int globalTime = 0;
+int ptTime = 0;
+
+//Buzzer pin
+int buzzer = 11;
+
+// Motor pins
+#define MotorPWM_L 4   // left motor PWM
+#define MotorPWM_R 5   // right motor PWM
+#define INA1A 32
+#define INA2A 34
+#define INA1B 30
+#define INA2B 36
+
+//LED pins
+#define LEFTREAR 31
+#define LEFTFRONT 49
+#define RIGHTREAR 37
+#define RIGHTFRONT 43
+
+// Encoder pins
+#define ENCODER_LEFT  2
+#define ENCODER_RIGHT 3
+
 //Music note definitions
 #define NOTE_B0  31
 #define NOTE_C1  33
@@ -99,100 +168,14 @@
 #define NOTE_DS8 4978
 #define REST      0
 
-#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
-#define LOGO_WIDTH 8 // OLED display width, in pixels
-#define LOGO_HEIGHT 8 // OLED display height, in pixels
-
-//Color definitions
-#define BLACK 0x000000
-#define BLUE 0x0000FF
-#define RED 0xFF0000
-#define GREEN 0x00FF00
-#define CYAN 0x00FFFF
-#define MAGENTA 0xFF00FF
-#define YELLOW 0xFFFF00
-#define WHITE 0xFFFFF
-
-#define MotorPWM_A 4 //left motor
-#define MotorPWM_B 5 //right motor
-#define BLUETOOTH_BAUD_RATE 38400
-
-//Ultrasonic sensor
+//Ultrasonic Pins
 #define echoPin 22
 #define trigPin 23
-long duration;
-float distance;
-
-//protothreads
-int PTdelay = 100;
-
-pt ptBlink;
-pt ptCamera;
-pt ptMovement;
-pt ptMusic;
-pt ptOLED;
-
-//Turn Defs
-int right = 0;
-int left = 0;
-int moving = 0;
-int hazards = 0;
-
-//Timer
-int globalTime = 0;
-int ptTime = 0;
-
-//Music
-int tempo = 125;
-
-//Buzzer pin
-int buzzer = 11;
-
-// Motor pins
-#define MotorPWM_L 4   // left motor PWM
-#define MotorPWM_R 5   // right motor PWM
-#define INA1A 32
-#define INA2A 34
-#define INA1B 30
-#define INA2B 36
-
-//LED pins
-#define LEFTREAR 31
-#define LEFTFRONT 49
-#define RIGHTREAR 37
-#define RIGHTFRONT 43
-
-// Encoder pins
-#define ENCODER_LEFT  2
-#define ENCODER_RIGHT 3
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init display
 //=============================
 // Music
 //=============================
-
-// int melody[] = { //Dearly Beloved - Kingdom Hearts 1
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
-
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
-
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_G5,4,
-
-//   NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
-
-//   NOTE_F5,8,
-
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
-// };
 
 int melody[] = { //Final Fantasy Victory Jingle
   NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
@@ -225,6 +208,53 @@ int dirRight = 60;
 volatile long count_left = 0;
 volatile long count_right = 0;
 
+// ============================
+/*Buzzer Music Stuff*/
+// ============================
+int melody1[] = { //Dearly Beloved - Kingdom Hearts 1
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
+
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
+
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_G5,4,
+
+  NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
+
+  NOTE_F5,8,
+
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
+};
+
+int melody[] = { //Final Fantasy Victory Jingle
+  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
+  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
+  NOTE_E5,4
+};
+
+
+// change this to make the song slower or faster
+int tempo = 125;
+int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+
+// this calculates the duration of a whole note in ms
+int wholenote = (60000 * 4) / tempo;
+int divider = 0, noteDuration = 0;
+
+// sample time in ms
+const unsigned long sampleTime = 100;
+
+/*Servomotor*/
+Servo myServo;
+// Defines the number of steps per rotation
+
+// Servo angles
+int dirLeft = 120;
+int dirStraight = 95;
+int dirRight = 60;
 // ============================
 // Light control
 // ============================
@@ -424,6 +454,43 @@ int musicThread(struct pt* mythread){
 // ============================
 // SETUP 
 // ============================
+void ffVictory()
+{
+    for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+
+    divider = melody[i + 1];
+
+    if (divider > 0) {
+      noteDuration = wholenote / divider;
+    } else {
+      noteDuration = (wholenote / abs(divider)) * 1.5;
+    }
+
+    tone(buzzer, melody[i], noteDuration);
+    delay(noteDuration);
+    noTone(buzzer);
+    }
+}
+
+void dearlyBeloved()
+{
+    for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
+
+    divider = melody1[i + 1];
+
+    if (divider > 0) {
+      noteDuration = wholenote / divider;
+    } else {
+      noteDuration = (wholenote / abs(divider)) * 1.5;
+    }
+
+    tone(buzzer, melody1[i], noteDuration);
+    delay(noteDuration);
+    noTone(buzzer);
+    }
+}
+
+//Setup function.
 void setup() {
   Serial.begin(9600);
   myServo.attach(13); //Pin for servomotor input.
@@ -489,88 +556,83 @@ void setup() {
   Serial2.begin(BLUETOOTH_BAUD_RATE);
   display.clearDisplay();
   display.display();
+
+   //Servomotor Setup
+  Serial.begin(9600);
+  myServo.attach(13); //Pin for servomotor input.
+  myServo.write(dirStraight); // start centered
+
+  // Serial.println("Commands: L (left), C (center), R (right)");
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  Serial.begin(9600);
 }
 
 // ============================
 // Loop
 // ============================
 void loop() {
+  // Set the trigPin condition
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    // The pulseIn function times the signal return after bouncing off the object
+    duration = pulseIn(echoPin, HIGH);
+    // Calculating the distance
+    distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+    // Displays the distance on the Serial Monitor
+    Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+    delay(100);
+
   // put your main code here, to run repeatedly:
     if (Serial2.available()) {
 
     char cmd = Serial2.read();
 
-    if (cmd == 'L' || cmd == 'l') {
-      myServo.write(dirLeft);
-      Serial.println("Moved Left");
-    }
-    else if (cmd == 'C' || cmd == 'c') {
-      myServo.write(dirStraight);
-      Serial.println("Centered");
-    }
-    else if (cmd == 'R' || cmd == 'r') {
-      myServo.write(dirRight);
-      Serial.println("Moved Right");
-    }
-    else if (cmd == 'F') {
+    switch (cmd)
+    {
+      case 'F': case 'f':
         Forward(128);
-    }
-    else if (cmd == 'B') {
-        Backward(128);
-    }
-    else if (cmd == 'S') {
+        break;
+      
+      case 'S': case 's':
         StopMotors();
-    }
-    else if (cmd == 'LEFT') {
-      Left(100);
-    }
-    else if (cmd == 'RIGHT') {
-      Right(100);
-    }
-    else if (cmd == 'Q') {
-      //PT_SCHEDULE(blinkThread(&ptBlink)); //pt blink
-      if (moving){ //first requirement
-        HEADLights();
-        globalTime = 0;
-      }
-      else if(!moving){
-        OFFLights();
-        globalTime += ptTime;
-      }
+        break;
 
-      if (left){ //second
-        LEFTLights();
-      }
-      else if(right){
-        RIGHTLights();
-      }
-      else if(moving){
-        OFFLights();
-        HEADLights();
-      }
+      case 'L': case 'l':
+        Left(100);
+        break;
 
-      if (globalTime > 2 * ptTime){
-        hazards = 1;
-      }
+      case 'R': case 'r':
+        Right(100);
+        break;
 
-      if(hazards){
-        //add hazards
-      }
+      case 'A': case 'a':
+        myServo.write(dirRight);
+        Serial.println("Looking right");
+        break;
 
-      // Set the trigPin condition
-      digitalWrite(trigPin, LOW);
-      delayMicroseconds(2);
-      // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
-      digitalWrite(trigPin, HIGH);
-      delayMicroseconds(10);
-      digitalWrite(trigPin, LOW);
-      // The pulseIn function times the signal return after bouncing off the object
-      duration = pulseIn(echoPin, HIGH);
-      // Calculating the distance
-      distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
-      // Displays the distance on the Serial Monitor
-      Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
-      delay(100);
+      case 'C': case 'c':
+        myServo.write(dirStraight);
+        Serial.println("Centered");
+        break;
+
+      case 'D': case 'd':
+        myServo.write(dirLeft);
+        Serial.println("Looking left");
+        break;
+      
+      case 'K': case 'k': 
+        dearlyBeloved();
+        break;
+      
+      case 'V': case'v':
+        ffVictory();
+        break;
     }
   }
 }
