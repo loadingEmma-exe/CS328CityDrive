@@ -243,6 +243,7 @@ pt ptCamera;
 pt ptMovement;
 pt ptMusic;
 pt ptOLED;
+pt ptServo;
 
 // ============================
 // Light control
@@ -428,6 +429,19 @@ int blinkThread(struct pt* mythread){
   PT_END(mythread);
 }
 
+int cameraThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+    //action
+    PT_SLEEP(mythread, PTdelay);
+    //action
+    PT_SLEEP(mythread, PTdelay);
+  }
+
+  PT_END(mythread);
+}
+
 int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
@@ -441,6 +455,44 @@ int musicThread(struct pt* mythread){
   PT_END(mythread);
 }
 
+int movementThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+    //action
+    PT_SLEEP(mythread, PTdelay);
+    //action
+    PT_SLEEP(mythread, PTdelay);
+  }
+
+  PT_END(mythread);
+}
+
+int OLEDThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+    //action
+    PT_SLEEP(mythread, PTdelay);
+    //action
+    PT_SLEEP(mythread, PTdelay);
+  }
+
+  PT_END(mythread);
+}
+
+int servoThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+    //action
+    PT_SLEEP(mythread, PTdelay);
+    //action
+    PT_SLEEP(mythread, PTdelay);
+  }
+
+  PT_END(mythread);
+}
 // ============================
 // MUSIC 
 // ============================
@@ -520,25 +572,29 @@ void setup() {
 
   //pt setup
   PT_INIT(&ptBlink);
+  PT_INIT(&ptCamera);
+  PT_INIT(&ptMovement);
+  PT_INIT(&ptMusic);
+  PT_INIT(&ptOLED);
+  PT_INIT(&ptServo);
 
-  //MUSIC PLAY (NEEDS TO BE PUT IN PROTOTHREAD)
-  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+  // for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
-  divider = melody[i + 1];
+  // divider = melody[i + 1];
 
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
+  // if (divider > 0) {
+  //   noteDuration = wholenote / divider;
+  // } else {
+  //   noteDuration = (wholenote / abs(divider)) * 1.5;
+  // }
 
-  tone(buzzer, melody[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
+  // tone(buzzer, melody[i], noteDuration);
+  // delay(noteDuration);
+  // noTone(buzzer);
+  // delay(20);
 
-  StopMotors();
-  delay(1000);
+  // StopMotors();
+  // delay(1000);
 
   Serial.begin(9600);
   Serial2.begin(BLUETOOTH_BAUD_RATE);
@@ -561,68 +617,10 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-
-  //FOR SERVO
-    // Set the trigPin condition
-    digitalWrite(trigPin, LOW);
-    delayMicroseconds(2);
-    // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
-    digitalWrite(trigPin, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigPin, LOW);
-    // The pulseIn function times the signal return after bouncing off the object
-    duration = pulseIn(echoPin, HIGH);
-    // Calculating the distance
-    distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
-    // Displays the distance on the Serial Monitor
-    Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
-    delay(100);
-
-  // put your main code here, to run repeatedly:
-    if (Serial2.available()) {
-
-    char cmd = Serial2.read();
-    
-    switch (cmd)
-    {
-      case 'F': case 'f':
-        Forward(128);
-        break;
-      
-      case 'S': case 's':
-        StopMotors();
-        break;
-
-      case 'L': case 'l':
-        Left(100);
-        break;
-
-      case 'R': case 'r':
-        Right(100);
-        break;
-
-      case 'A': case 'a':
-        myServo.write(dirRight);
-        Serial.println("Looking right");
-        break;
-
-      case 'C': case 'c':
-        myServo.write(dirStraight);
-        Serial.println("Centered");
-        break;
-
-      case 'D': case 'd':
-        myServo.write(dirLeft);
-        Serial.println("Looking left");
-        break;
-      
-      case 'K': case 'k': 
-        dearlyBeloved();
-        break;
-      
-      case 'V': case'v':
-        ffVictory();
-        break;
-    }
-  }
+  PT_SCHEDULE(&servoThread(ptServo));
+  PT_SCHEDULE(&movementThread(ptMovement));
+  PT_SCHEDULE(&cameraThread(ptCamera));
+  PT_SCHEDULE(&MusicThread(ptMusic));
+  PT_SCHEDULE(&blinkThread(ptBlink));
+  PT_SCHEDULE(&blinkThread(ptOLED));
 }
