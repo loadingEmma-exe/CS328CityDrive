@@ -95,6 +95,23 @@
 
 #define echoPin 22
 #define trigPin 23
+
+#define MotorPWM_A 4 //left motor
+#define MotorPWM_B 5 //right motor
+#define BLUETOOTH_BAUD_RATE 38400
+
+// Motor pins
+#define MotorPWM_L 4   // left motor PWM
+#define MotorPWM_R 5   // right motor PWM
+#define INA1A 32
+#define INA2A 34
+#define INA1B 30
+#define INA2B 36
+
+#define LTsensor_l  8   // left sensor (yellow)
+#define LTsensor_c  7   // center sensor (green)
+#define LTsensor_r  6   // right sensor (white)
+
 long duration;
 float distance;
 
@@ -145,9 +162,128 @@ int dirLeft = 120;
 int dirStraight = 95;
 int dirRight = 60;
 
+bool lineMode = false;
+// ============================
+// Motor control
+// ============================
+void Forward(int speed) {
+  analogWrite(MotorPWM_L, speed);
+  analogWrite(MotorPWM_R, speed);
+
+  // Left motor forward
+  digitalWrite(INA1A, HIGH);
+  digitalWrite(INA2A, LOW);
+
+  // Right motor forward
+  digitalWrite(INA1B, HIGH);
+  digitalWrite(INA2B, LOW);
+}
+
+void Backward(int speed) {
+  analogWrite(MotorPWM_L, speed);
+  analogWrite(MotorPWM_R, speed);
+
+  // Left motor backward
+  digitalWrite(INA1A, LOW);
+  digitalWrite(INA2A, HIGH);
+
+  // Right motor backward
+  digitalWrite(INA1B, LOW);
+  digitalWrite(INA2B, HIGH);
+}
+
+void Left(int speed) 
+{
+  analogWrite(MotorPWM_L, speed);
+  analogWrite(MotorPWM_R, speed - 20);
+  
+  // Left motor backward
+  digitalWrite(INA1A, LOW);
+  digitalWrite(INA2A, HIGH);
+
+  // Right motor forward
+  digitalWrite(INA1B, HIGH);
+  digitalWrite(INA2B, LOW);
+}
+
+void Right(int speed)
+{
+  analogWrite(MotorPWM_L, speed - 20);
+  analogWrite(MotorPWM_R, speed);
+  
+  // Left motor forward
+  digitalWrite(INA1A, HIGH);
+  digitalWrite(INA2A, LOW);
+
+  // Right motor backward
+  digitalWrite(INA1B, LOW);
+  digitalWrite(INA2B, HIGH);
+}
+
+void StopMotors() {
+  analogWrite(MotorPWM_L, 0);
+  analogWrite(MotorPWM_R, 0);
+
+  digitalWrite(INA1A, LOW);
+  digitalWrite(INA2A, LOW);
+  digitalWrite(INA1B, LOW);
+  digitalWrite(INA2B, LOW);
+}
+
+void Halt(int startSpeed)
+{
+  for (int s = startSpeed; s > 0; s -= 20) {
+    Forward(s);
+    delay(20);
+  }
+  StopMotors();
+  
+}
+
+void Turn(int maxSpeed, int turnTime)
+{
+  for (int s = 80; s <= maxSpeed; s += 20) {
+    Right(s);
+    delay(20);
+  }
+  delay(turnTime);  // actual turning duration
+  StopMotors();
+}
+
+void Accelerate(int maxSpeed)
+{
+  for (int s = 80; s <= maxSpeed; s += 20) {
+    Forward(s);
+    delay(20);
+  }
+}
+
+
 
 void setup() {
-  //Servomotor Setup
+  Serial.begin(9600);
+  Serial2.begin(BLUETOOTH_BAUD_RATE);
+
+  // Motor pins
+  pinMode(MotorPWM_L, OUTPUT);
+  pinMode(MotorPWM_R, OUTPUT);
+  pinMode(INA1A, OUTPUT);
+  pinMode(INA2A, OUTPUT);
+  pinMode(INA1B, OUTPUT);
+  pinMode(INA2B, OUTPUT);
+
+  //Line Sensor pins
+  pinMode(LTsensor_l, INPUT);
+  pinMode(LTsensor_c, INPUT);
+  pinMode(LTsensor_r, INPUT);
+
+  StopMotors();
+  delay(1000);
+
+  Serial.begin(9600);
+  Serial2.begin(BLUETOOTH_BAUD_RATE);
+
+   //Servomotor Setup
   Serial.begin(9600);
   myServo.attach(13); //Pin for servomotor input.
   myServo.write(dirStraight); // start centered
@@ -176,21 +312,96 @@ for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
 }
 
-void loop() {
-  if (Serial.available() > 0) {
-    char cmd = Serial.read();
+void lineSense()
+{
+  int sensorL = digitalRead(LTsensor_l);
+  int sensorC = digitalRead(LTsensor_c);
+  int sensorR = digitalRead(LTsensor_r);
 
-    if (cmd == 'L' || cmd == 'l') {
-      myServo.write(dirLeft);
-      Serial.println("Moved Left");
-    }
-    else if (cmd == 'C' || cmd == 'c') {
-      myServo.write(dirStraight);
-      Serial.println("Centered");
-    }
-    else if (cmd == 'R' || cmd == 'r') {
-      myServo.write(dirRight);
-      Serial.println("Moved Right");
+  bool L = (sensorL == LOW);
+  bool C = (sensorC == LOW);
+  bool R = (sensorR == LOW);
+
+  //Front edge detected
+  if (C && (L || R))
+  {
+    StopMotors();
+    Backward(30);
+    delay(200);
+    Right(30); // quick escape turn
+    delay(200);
+  }
+  else if (L)
+  {
+    Right(120);
+  }
+  else if (R)
+  {
+    Left(120);
+  }
+  else if (C) {
+    Backward(120);
+    delay(150);
+    Right(30);
+  }
+  else
+  {
+    Forward(30);
+  }
+
+
+}
+
+void loop() {
+  if (lineMode) {
+  lineSense();
+}
+
+  if (Serial2.available() > 0) {
+    char cmd = Serial2.read();
+
+   switch (cmd)
+    {
+      case 'F':
+        Forward(128);
+        break;
+      
+      case 'S':
+        StopMotors();
+        break;
+
+      case 'L':
+        Left(100);
+        break;
+
+      case 'R':
+        Right(100);
+        break;
+
+      case 'A':
+        myServo.write(dirRight);
+        Serial.println("Looking right");
+        break;
+
+      case 'C':
+        myServo.write(dirStraight);
+        Serial.println("Centered");
+        break;
+
+      case 'D':
+        myServo.write(dirLeft);
+        Serial.println("Looking left");
+        break;
+      
+      case 'X':
+        lineMode = true;
+        break;
+
+      case 'x':
+        lineMode = false;
+        StopMotors();
+        break;
+
     }
   }
 
