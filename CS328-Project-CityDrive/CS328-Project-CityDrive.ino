@@ -1,11 +1,12 @@
-//From LAB 5 PWM Motor.c.txt
-// Pins for all inputs, keep in mind the PWM defines must be on PWM pins
-
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_GFX.h"
 #include "protothreads.h" //protothreading
 #include <SoftwareSerial.h>
 #include <Servo.h>
+
+//========================
+// OLED Defintions
+//========================
 
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -15,6 +16,8 @@
 
 #define LOGO_WIDTH 8 // OLED display width, in pixels
 #define LOGO_HEIGHT 8 // OLED display height, in pixels
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init display
 
 //Color definitions
 #define BLACK 0x000000
@@ -26,37 +29,23 @@
 #define YELLOW 0xFFFF00
 #define WHITE 0xFFFFF
 
-#define MotorPWM_A 4 //left motor
-#define MotorPWM_B 5 //right motor
+//========================
+// Bluetooth Defintions
+//========================
+
 #define BLUETOOTH_BAUD_RATE 38400
 
-//Ultrasonic sensor
+//========================
+// Ultrasonic Defintions
+//========================
 #define echoPin 22
 #define trigPin 23
 long duration;
 float distance;
 
-//protothreads
-int PTdelay = 100;
-
-pt ptBlink;
-pt ptCamera;
-pt ptMovement;
-pt ptMusic;
-pt ptOLED;
-
-//Turn Defs
-int right = 0;
-int left = 0;
-int moving = 0;
-int hazards = 0;
-
-//Timer
-int globalTime = 0;
-int ptTime = 0;
-
-//Buzzer pin
-int buzzer = 11;
+//========================
+// Movement Defintions
+//========================
 
 // Motor pins
 #define MotorPWM_L 4   // left motor PWM
@@ -66,15 +55,45 @@ int buzzer = 11;
 #define INA1B 30
 #define INA2B 36
 
+// Movement indicators
+int right = 0;
+int left = 0;
+int moving = 0;
+int hazards = 0;
+
+//========================
+// Timer Defintions
+//========================
+
+int globalTime = 0;
+int ptTime = 0;
+
+//========================
+// Buzzer Defintions
+//========================
+int buzzer = 11;
+
+//========================
+// LED Defintions
+//========================
+
 //LED pins
 #define LEFTREAR 31
 #define LEFTFRONT 49
 #define RIGHTREAR 37
 #define RIGHTFRONT 43
 
-// Encoder pins
+//========================
+// Encoder Defintions
+//========================
+
+//Encoder pins
 #define ENCODER_LEFT  2
 #define ENCODER_RIGHT 3
+
+//========================
+// Music Defintions
+//========================
 
 //Music note definitions
 #define NOTE_B0  31
@@ -168,49 +187,6 @@ int buzzer = 11;
 #define NOTE_DS8 4978
 #define REST      0
 
-//Ultrasonic Pins
-#define echoPin 22
-#define trigPin 23
-
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init display
-//=============================
-// Music
-//=============================
-
-int melody[] = { //Final Fantasy Victory Jingle
-  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
-  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
-  NOTE_E5,4
-};
-
-int notes = sizeof(melody) / sizeof(melody[0]) / 2;
-
-// this calculates the duration of a whole note in ms
-int wholenote = (60000 * 4) / tempo;
-int divider = 0, noteDuration = 0;
-
-//============================
-// Servo
-//============================
-
-/*Servomotor*/
-Servo myServo;
-// Defines the number of steps per rotation
-
-// Servo angles
-int dirLeft = 120;
-int dirStraight = 95;
-int dirRight = 60;
-
-// ============================
-// Encoder counters
-// ============================
-volatile long count_left = 0;
-volatile long count_right = 0;
-
-// ============================
-/*Buzzer Music Stuff*/
-// ============================
 int melody1[] = { //Dearly Beloved - Kingdom Hearts 1
   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
@@ -235,7 +211,6 @@ int melody[] = { //Final Fantasy Victory Jingle
   NOTE_E5,4
 };
 
-
 // change this to make the song slower or faster
 int tempo = 125;
 int notes = sizeof(melody) / sizeof(melody[0]) / 2;
@@ -247,14 +222,28 @@ int divider = 0, noteDuration = 0;
 // sample time in ms
 const unsigned long sampleTime = 100;
 
-/*Servomotor*/
+//========================
+// Servo Defintions
+//========================
+
 Servo myServo;
-// Defines the number of steps per rotation
 
 // Servo angles
 int dirLeft = 120;
 int dirStraight = 95;
 int dirRight = 60;
+
+//========================
+// Protothreads Defintions
+//========================
+int PTdelay = 100;
+
+pt ptBlink;
+pt ptCamera;
+pt ptMovement;
+pt ptMusic;
+pt ptOLED;
+
 // ============================
 // Light control
 // ============================
@@ -292,9 +281,10 @@ void LEFTLights(){
   digitalWrite(LEFTFRONT, HIGH);
 }
 
-// Method: writetext
-// Input: x position
-// Print Lab Text across the screen
+// ============================
+// OLED control
+// ============================
+
 void writetext(int x) { 
   String text = "Lab 4 by: Emma Raymond Austin Hoang";
 
@@ -452,7 +442,7 @@ int musicThread(struct pt* mythread){
 }
 
 // ============================
-// SETUP 
+// MUSIC 
 // ============================
 void ffVictory()
 {
@@ -490,7 +480,9 @@ void dearlyBeloved()
     }
 }
 
-//Setup function.
+// ============================
+// Setup
+// ============================
 void setup() {
   Serial.begin(9600);
   myServo.attach(13); //Pin for servomotor input.
@@ -544,10 +536,6 @@ void setup() {
   delay(noteDuration);
   noTone(buzzer);
   delay(20);
-}
-
-  //attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT), ISRMotorLeft, FALLING);
-  //attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT), ISRMotorRight, FALLING);
 
   StopMotors();
   delay(1000);
@@ -573,7 +561,9 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  // Set the trigPin condition
+
+  //FOR SERVO
+    // Set the trigPin condition
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
     // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
@@ -592,7 +582,7 @@ void loop() {
     if (Serial2.available()) {
 
     char cmd = Serial2.read();
-
+    
     switch (cmd)
     {
       case 'F': case 'f':
