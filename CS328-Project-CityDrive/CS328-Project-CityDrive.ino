@@ -388,7 +388,6 @@ void ffVictory()
     tone(buzzer, melody[i], noteDuration);
     delay(noteDuration);
     noTone(buzzer);
-    delay(20);
     }
 }
 
@@ -407,7 +406,6 @@ void dearlyBeloved()
     tone(buzzer, melody1[i], noteDuration);
     delay(noteDuration);
     noTone(buzzer);
-    delay(20);
     }
 }
 
