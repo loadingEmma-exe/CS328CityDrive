@@ -485,43 +485,46 @@ void loop() {
     if (Serial2.available()) {
     char cmd = Serial2.read();
 
-    if (cmd == 'F') {
-      Forward(128);
-    }
-    else if (cmd == 'B') {
-      Backward(128);
-    }
-    else if (cmd == 'S') {
-      StopMotors();
-    }
-    else if (cmd == 'L') {
-      Left(100);
-    }
-    else if (cmd == 'R') {
-      Right(100);
-    }
-    else if (cmd == 'Q'){ //these were all calibrated using a dead ish battery
-    }
-    else if (cmd == 'A' || cmd == 'a') {
-      myServo.write(dirLeft);
-      Serial.println("Moved Left");
-    }
-    else if (cmd == 'C' || cmd == 'c') {
-      myServo.write(dirStraight);
-      Serial.println("Centered");
-    }
-    else if (cmd == 'D' || cmd == 'd') {
-      myServo.write(dirRight);
-      Serial.println("Moved Right");
-    }
-    else if (cmd == 'K' || cmd == 'K')
+    switch (cmd)
     {
-      dearlyBeloved();
-    }
-    else if (cmd == 'V' || cmd == 'V')
-    {
-      ffVictory();
+      case 'F':
+        Forward(128);
+        break;
+      
+      case 'S':
+        StopMotors();
+        break;
+
+      case 'L':
+        Left(100);
+        break;
+
+      case 'R':
+        Right(100);
+        break;
+
+      case 'A':
+        myServo.write(dirRight);
+        Serial.println("Looking right");
+        break;
+
+      case 'C':
+        myServo.write(dirStraight);
+        Serial.println("Centered");
+        break;
+
+      case 'D':
+        myServo.write(dirLeft);
+        Serial.println("Looking left");
+        break;
+      
+      case 'K':
+        dearlyBeloved();
+        break;
+      
+      case 'V':
+        ffVictory();
+        break;
     }
   }
-
 }
