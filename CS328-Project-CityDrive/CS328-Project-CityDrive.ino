@@ -617,10 +617,10 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  PT_SCHEDULE(&servoThread(ptServo));
-  PT_SCHEDULE(&movementThread(ptMovement));
-  PT_SCHEDULE(&cameraThread(ptCamera));
-  PT_SCHEDULE(&MusicThread(ptMusic));
-  PT_SCHEDULE(&blinkThread(ptBlink));
-  PT_SCHEDULE(&blinkThread(ptOLED));
+  PT_SCHEDULE(servoThread(&ptServo));
+  PT_SCHEDULE(movementThread(&ptMovement));
+  PT_SCHEDULE(cameraThread(&ptCamera));
+  PT_SCHEDULE(musicThread(&ptMusic));
+  PT_SCHEDULE(blinkThread(&ptBlink));
+  PT_SCHEDULE(OLEDThread(&ptOLED));
 }
