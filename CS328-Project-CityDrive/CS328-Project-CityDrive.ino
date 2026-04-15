@@ -164,23 +164,23 @@ long duration;
 float distance;
 
 /*Buzzer Music Stuff*/
-// int melody[] = { //Dearly Beloved - Kingdom Hearts 1
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
+int melody1[] = { //Dearly Beloved - Kingdom Hearts 1
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
 
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
 
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_G5,4,
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_G5,4,
 
-//   NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
+  NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
 
-//   NOTE_F5,8,
+  NOTE_F5,8,
 
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
-// };
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
+};
 
 int melody[] = { //Final Fantasy Victory Jingle
   NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
@@ -373,6 +373,44 @@ void Accelerate(int maxSpeed)
   }
 }
 
+void ffVictory()
+{
+    for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+
+    divider = melody[i + 1];
+
+    if (divider > 0) {
+      noteDuration = wholenote / divider;
+    } else {
+      noteDuration = (wholenote / abs(divider)) * 1.5;
+    }
+
+    tone(buzzer, melody[i], noteDuration);
+    delay(noteDuration);
+    noTone(buzzer);
+    delay(20);
+    }
+}
+
+void dearlyBeloved()
+{
+    for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
+
+    divider = melody1[i + 1];
+
+    if (divider > 0) {
+      noteDuration = wholenote / divider;
+    } else {
+      noteDuration = (wholenote / abs(divider)) * 1.5;
+    }
+
+    tone(buzzer, melody1[i], noteDuration);
+    delay(noteDuration);
+    noTone(buzzer);
+    delay(20);
+    }
+}
+
 //Setup function.
 void setup() {
   Serial.begin(9600);
@@ -422,22 +460,6 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   Serial.begin(9600);
-
-for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
-
-  divider = melody[i + 1];
-
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
-
-  tone(buzzer, melody[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
-}
 }
 
 // ============================
@@ -491,6 +513,14 @@ void loop() {
     else if (cmd == 'D' || cmd == 'd') {
       myServo.write(dirRight);
       Serial.println("Moved Right");
+    }
+    else if (cmd == 'K' || cmd == 'K')
+    {
+      dearlyBeloved();
+    }
+    else if (cmd == 'V' || cmd == 'V')
+    {
+      ffVictory();
     }
   }
 
