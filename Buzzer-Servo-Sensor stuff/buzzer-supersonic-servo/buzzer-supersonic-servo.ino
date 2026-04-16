@@ -111,6 +111,7 @@
 #define LTsensor_l  8   // left sensor (yellow)
 #define LTsensor_c  7   // center sensor (green)
 #define LTsensor_r  6   // right sensor (white)
+#define RGBLED 48
 
 long duration;
 float distance;
@@ -276,6 +277,7 @@ void setup() {
   pinMode(LTsensor_l, INPUT);
   pinMode(LTsensor_c, INPUT);
   pinMode(LTsensor_r, INPUT);
+  pinMode(RGBLED, OUTPUT);
 
   StopMotors();
   delay(1000);
@@ -326,9 +328,9 @@ void lineSense()
   if (C && (L || R))
   {
     StopMotors();
-    Backward(30);
+    Backward(60);
     delay(200);
-    Right(30); // quick escape turn
+    Right(60); // quick escape turn
     delay(200);
   }
   else if (L)
@@ -342,17 +344,18 @@ void lineSense()
   else if (C) {
     Backward(120);
     delay(150);
-    Right(30);
+    Right(60);
   }
   else
   {
-    Forward(30);
+    Forward(60);
   }
 
 
 }
 
 void loop() {
+  digitalWrite(RGBLED, HIGH);
   if (lineMode) {
   lineSense();
 }
