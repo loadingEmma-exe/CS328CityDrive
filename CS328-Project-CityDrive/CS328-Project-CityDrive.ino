@@ -65,7 +65,8 @@ int hazards = 0;
 // Timer Defintions
 //========================
 
-int globalTime = 0;
+int projectTime = 0;
+int preprojectTime;
 int ptTime = 0;
 
 //========================
@@ -87,6 +88,7 @@ int rON = 0;
 int lON = 0;
 int fON = 0;
 int bON = 0;
+int hON = 0;
 
 //========================
 // Encoder Defintions
@@ -434,7 +436,14 @@ int blinkThread(struct pt* mythread){
 
   for(;;){
     if(moving){
+      OFFLights();
       HEADLights();
+      projectTime = 0;
+    }
+
+    if(!moving){
+      projectTime += 100;
+      BREAKLights();
     }
 
     if(rON && right){ //if turning right and need to blink off
@@ -467,12 +476,25 @@ int blinkThread(struct pt* mythread){
       PT_SLEEP(mythread, PTdelay);
     }
 
-    if(!moving){
+    if(projectTime >= 2000){
+      hON = !hON;
+    }
+
+    if(projectTime >= 2000 && hON){ //if hazards and needs to blink off
       OFFLights();
-      BREAKLights();
+      hON = !hON;
       PT_SLEEP(mythread, PTdelay);
-      fON = !fON;
-      bON = !bON;
+    }
+
+    if(projectTime >= 2000 && !hON){ //if hazards and needs to blink on
+      HEADLights(1);
+      LEFTLights();
+      lON = !lON;
+
+      HEADLights(-1);
+      RIGHTLights();
+      rON = !rON;
+      PT_SLEEP(mythread, PTdelay);
     }
 
     PT_SLEEP(mythread, PTdelay);
