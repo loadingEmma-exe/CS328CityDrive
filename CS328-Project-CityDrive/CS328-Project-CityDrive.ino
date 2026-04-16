@@ -229,6 +229,12 @@ int divider = 0, noteDuration = 0;
 // sample time in ms
 const unsigned long sampleTime = 100;
 
+int songFF = 0;
+int FFNOTE = sizeof(melody) / sizeof(melody[0]);
+int songKH = 0;
+int KHNOTE;
+int song = 0;
+
 //========================
 // Servo Defintions
 //========================
@@ -520,10 +526,24 @@ int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
-    PT_SLEEP(mythread, PTdelay);
-    //action
-    PT_SLEEP(mythread, PTdelay);
+    if(!songFF){ //if song is not playing and needs to play
+      
+      divider = melody[i + 1];
+
+      if (divider > 0) {
+        noteDuration = wholenote / divider;
+      } else {
+        noteDuration = (wholenote / abs(divider)) * 1.5;
+      }
+
+      tone(buzzer, melody[i], noteDuration);
+      
+      FFNOTE += 2;
+    }
+
+    if(songFF){ //if song is playing and needs to pause
+      noTone(buzzer);
+    }
   }
 
   PT_END(mythread);
@@ -572,7 +592,7 @@ int servoThread(struct pt* mythread){
 // ============================
 void ffVictory()
 {
-    for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
     divider = melody[i + 1];
 
@@ -585,7 +605,7 @@ void ffVictory()
     tone(buzzer, melody[i], noteDuration);
     delay(noteDuration);
     noTone(buzzer);
-    }
+  }
 }
 
 void dearlyBeloved()
