@@ -142,18 +142,30 @@ int buzzer = 11;
 //   NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
 // };
 
-int melody[] = { //Final Fantasy Victory Jingle
-  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
-  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
-  NOTE_E5,4
-};
+// int melody[] = { //Final Fantasy Victory Jingle
+//   NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
+//   NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
+//   NOTE_E5,4
+// };
 
+int melody[] = { //Amaurot (Neath Dark Waters - FFXIV)
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_FS4, 8, NOTE_G4, 4, NOTE_A4, 2,
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_G4, 8, NOTE_C5, 8, NOTE_B4, 8, NOTE_G4, 4, NOTE_A4, 2,
+
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_FS4, 8, NOTE_G4, 4, NOTE_A4, 2,
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_C5, 8, NOTE_B4, 8, NOTE_C5, 4, NOTE_D5, 2,
+
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_AS4, 4, NOTE_C5, 2,
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_AS4, 8, NOTE_DS5, 8, NOTE_D5, 8, NOTE_AS4, 8, NOTE_C5, 2,
+
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_AS4, 4, NOTE_C5, 2,
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_DS5, 8, NOTE_D5, 4, NOTE_DS5, 8, NOTE_F5, 2,
+};
 int notes = sizeof(melody) / sizeof(melody[0]) / 2;
 
 // this calculates the duration of a whole note in ms
 int wholenote = (60000 * 4) / tempo;
 int divider = 0, noteDuration = 0;
-
 /*Servomotor*/
 Servo myServo;
 // Defines the number of steps per rotation
