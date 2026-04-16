@@ -83,6 +83,11 @@ int buzzer = 11;
 #define RIGHTREAR 37
 #define RIGHTFRONT 43
 
+int rON = 0;
+int lON = 0;
+int fON = 0;
+int bON = 0;
+
 //========================
 // Encoder Defintions
 //========================
@@ -262,9 +267,17 @@ void ONLights(){
   digitalWrite(RIGHTFRONT, HIGH);
 }
 
-void HEADLights(){
-  digitalWrite(LEFTFRONT, HIGH);
-  digitalWrite(RIGHTFRONT, HIGH);
+void HEADLights(int side = 0){
+  if (side == -1){ //left side
+    digitalWrite(LEFTFRONT, HIGH);
+  }
+  else if (side == 1){ //right side
+    digitalWrite(RIGHTFRONT, HIGH);
+  }
+  else{
+    digitalWrite(RIGHTFRONT, HIGH);
+    digitalWrite(LEFTFRONT, HIGH);
+  }
 }
 
 void BREAKLights(){
@@ -420,9 +433,48 @@ int blinkThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
-    PT_SLEEP(mythread, PTdelay);
-    //action
+    if(moving){
+      HEADLights();
+    }
+
+    if(rON && right){ //if turning right and need to blink off
+      OFFLights();
+      HEADLights(-1);
+      rON = !rON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+    
+    if(!rON && right) { //if turning right and need to blink on
+      OFFLights();
+      HEADLights(-1);
+      RIGHTLights();
+      rON = !rON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(lON && left){ //if turning left and need to blink off
+      OFFLights();
+      HEADLights(1);
+      lON = !lON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(!lON && left) { //if turning left and need to blink on
+      OFFLights();
+      HEADLights(1);
+      LEFTLights();
+      lON = !lON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(!moving){
+      OFFLights();
+      BREAKLights();
+      PT_SLEEP(mythread, PTdelay);
+      fON = !fON;
+      bON = !bON;
+    }
+
     PT_SLEEP(mythread, PTdelay);
   }
 
@@ -578,36 +630,17 @@ void setup() {
   PT_INIT(&ptOLED);
   PT_INIT(&ptServo);
 
-  // for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
-
-  // divider = melody[i + 1];
-
-  // if (divider > 0) {
-  //   noteDuration = wholenote / divider;
-  // } else {
-  //   noteDuration = (wholenote / abs(divider)) * 1.5;
-  // }
-
-  // tone(buzzer, melody[i], noteDuration);
-  // delay(noteDuration);
-  // noTone(buzzer);
-  // delay(20);
-
-  // StopMotors();
-  // delay(1000);
-
   Serial.begin(9600);
   Serial2.begin(BLUETOOTH_BAUD_RATE);
   display.clearDisplay();
   display.display();
 
-   //Servomotor Setup
+  //Servomotor Setup
   Serial.begin(9600);
   myServo.attach(13); //Pin for servomotor input.
   myServo.write(dirStraight); // start centered
 
   // Serial.println("Commands: L (left), C (center), R (right)");
-
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   Serial.begin(9600);
@@ -617,10 +650,36 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  PT_SCHEDULE(servoThread(&ptServo));
+
+  if (Serial2.available()) {
+
+    char cmd = Serial2.read();
+    
+    switch (cmd)
+    {
+      case 'F': case 'f':
+        Forward(128);
+        break;
+      
+      case 'S': case 's':
+        StopMotors();
+        break;
+
+      case 'L': case 'l':
+        Left(100);
+        break;
+
+      case 'R': case 'r':
+        Right(100);
+        break;
+    }
+  }
+
+  // PT_SCHEDULE(servoThread(&ptServo));
   PT_SCHEDULE(movementThread(&ptMovement));
-  PT_SCHEDULE(cameraThread(&ptCamera));
-  PT_SCHEDULE(musicThread(&ptMusic));
+  // PT_SCHEDULE(cameraThread(&ptCamera));
+  // PT_SCHEDULE(musicThread(&ptMusic));
   PT_SCHEDULE(blinkThread(&ptBlink));
-  PT_SCHEDULE(OLEDThread(&ptOLED));
+  // PT_SCHEDULE(OLEDThread(&ptOLED));
+
 }
