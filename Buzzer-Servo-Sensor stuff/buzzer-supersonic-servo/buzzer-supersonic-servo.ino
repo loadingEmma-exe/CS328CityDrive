@@ -1,5 +1,6 @@
 //Includes the Arduino Stepper Library
 #include <Servo.h>
+#include <Pixy2.h>
 
 //Music note definitions
 #define NOTE_B0  31
@@ -113,8 +114,12 @@
 #define LTsensor_r  6   // right sensor (white)
 #define RGBLED 48
 
+//Ultrasonic sensor variables
 long duration;
 float distance;
+
+//Pixy2 Camera declaration
+Pixy2 pixy;
 
 /*Buzzer Music Stuff*/
 
@@ -124,31 +129,31 @@ int tempo = 125;
 //Buzzer pin
 int buzzer = 11;
 
-// int melody[] = { //Dearly Beloved - Kingdom Hearts 1
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
+int melody1[] = { //Dearly Beloved - Kingdom Hearts 1
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
 
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
 
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_G5,4,
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_G5,4,
 
-//   NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
+  NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
 
-//   NOTE_F5,8,
+  NOTE_F5,8,
 
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
-// };
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
+};
 
-// int melody[] = { //Final Fantasy Victory Jingle
-//   NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
-//   NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
-//   NOTE_E5,4
-// };
+int melody[] = { //Final Fantasy Victory Jingle
+  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
+  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
+  NOTE_E5,4
+};
 
-int melody[] = { //Amaurot (Neath Dark Waters - FFXIV)
+int melody2[] = { //Amaurot (Neath Dark Waters - FFXIV)
   NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_FS4, 8, NOTE_G4, 4, NOTE_A4, 2,
   NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_G4, 8, NOTE_C5, 8, NOTE_B4, 8, NOTE_G4, 4, NOTE_A4, 2,
 
@@ -161,7 +166,6 @@ int melody[] = { //Amaurot (Neath Dark Waters - FFXIV)
   NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_AS4, 4, NOTE_C5, 2,
   NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_DS5, 8, NOTE_D5, 4, NOTE_DS5, 8, NOTE_F5, 2,
 };
-int notes = sizeof(melody) / sizeof(melody[0]) / 2;
 
 // this calculates the duration of a whole note in ms
 int wholenote = (60000 * 4) / tempo;
@@ -271,10 +275,97 @@ void Accelerate(int maxSpeed)
   }
 }
 
+void ffVictory()
+{
+  int notes = sizeof(melody) / sizeof(melody[0]) / 2;
 
+  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
-void setup() {
+  divider = melody[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void Amaurot()
+{
+  int notes = sizeof(melody2) / sizeof(melody2[0]) / 2; 
+  for (int i = 0; i < sizeof(melody2) / sizeof(melody2[0]); i += 2) {
+
+  divider = melody2[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody2[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void dearlyBeloved()
+{
+  int notes = sizeof(melody1) / sizeof(melody1[0]) / 2; 
+  for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
+
+  divider = melody1[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody1[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void pixyBarcode()
+{
+  pixy.line.getAllFeatures(); //get line features
+  // pixy.line.getMainFeatures(); // Could use this too
+  if (pixy.line.barcodes) // detected road sign
+  {
+  int code = pixy.line.barcodes[0].m_code;
+    if (code == 0)
+    {
+      Serial.println("Going forward.");
+      ffVictory();
+    }
+    else if (code == 14)
+    {
+      Serial.println("Turning Right..");
+      Amaurot();
+    }
+    else if (code == 4)
+    {
+      Serial.println("Turning Left..");
+      dearlyBeloved();
+    }
+  }
+}
+
+void setup() 
+{
   Serial.begin(9600);
+  pixy.init();
+  pixy.changeProg("line");
   Serial2.begin(BLUETOOTH_BAUD_RATE);
 
   // Motor pins
@@ -307,71 +398,12 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   Serial.begin(9600);
-
-for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
-
-  divider = melody[i + 1];
-
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
-
-  tone(buzzer, melody[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
+  ffVictory();
 }
 
-}
-
-void lineSense()
-{
-  int sensorL = digitalRead(LTsensor_l);
-  int sensorC = digitalRead(LTsensor_c);
-  int sensorR = digitalRead(LTsensor_r);
-
-  bool L = (sensorL == LOW);
-  bool C = (sensorC == LOW);
-  bool R = (sensorR == LOW);
-
-  //Front edge detected
-  if (C && (L || R))
-  {
-    StopMotors();
-    Backward(60);
-    delay(200);
-    Right(60); // quick escape turn
-    delay(200);
-  }
-  else if (L)
-  {
-    Right(120);
-  }
-  else if (R)
-  {
-    Left(120);
-  }
-  else if (C) {
-    Backward(120);
-    delay(150);
-    Right(60);
-  }
-  else
-  {
-    Forward(60);
-  }
-
-
-}
 
 void loop() {
   digitalWrite(RGBLED, HIGH);
-  if (lineMode) {
-  lineSense();
-}
-
   if (Serial2.available() > 0) {
     char cmd = Serial2.read();
 
@@ -407,32 +439,24 @@ void loop() {
         myServo.write(dirLeft);
         Serial.println("Looking left");
         break;
-      
+
       case 'X':
-        lineMode = true;
-        break;
-
-      case 'x':
-        lineMode = false;
-        StopMotors();
-        break;
-
+        pixyBarcode();
     }
   }
 
     // Set the trigPin condition
-digitalWrite(trigPin, LOW);
-delayMicroseconds(2);
-// Sets the trigPin HIGH (ACTIVE) for 10 microseconds
-digitalWrite(trigPin, HIGH);
-delayMicroseconds(10);
-digitalWrite(trigPin, LOW);
-// The pulseIn function times the signal return after bouncing off the object
-duration = pulseIn(echoPin, HIGH);
-// Calculating the distance
-distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
-// Displays the distance on the Serial Monitor
-Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
-delay(100);
-
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    // The pulseIn function times the signal return after bouncing off the object
+    duration = pulseIn(echoPin, HIGH);
+    // Calculating the distance
+    distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+    // Displays the distance on the Serial Monitor
+    Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+    delay(100);
 }
