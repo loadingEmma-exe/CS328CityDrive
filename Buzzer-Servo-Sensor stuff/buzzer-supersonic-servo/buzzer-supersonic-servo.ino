@@ -1,6 +1,12 @@
 //Includes the Arduino Stepper Library
 #include <Servo.h>
 #include <Pixy2.h>
+#include <Wire.h>
+#include "protothreads.h"
+#include "SoftwareSerial.h"
+#include "Adafruit_TCS34725.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 //Music note definitions
 #define NOTE_B0  31
