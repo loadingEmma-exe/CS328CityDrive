@@ -621,8 +621,54 @@ int cameraThread(struct pt* mythread){ //barcode scanning
 int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
+  int melody[] = { //Final Fantasy Victory Jingle
+  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
+  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
+  NOTE_E5,4
+};
+
   for(;;){
-    tone(buzzer, NOTE_E5, noteDuration);
+    switch (FFNOTE){
+      case 0:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 1:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 2:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 3:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 4:
+        tone(buzzer, NOTE_C5, noteDuration);
+        FFNOTE++;
+        break;
+      case 5:
+        tone(buzzer, NOTE_D5, noteDuration);
+        FFNOTE++;
+        break;
+      case 6:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 7:
+        tone(buzzer, NOTE_D5, noteDuration);
+        FFNOTE++;
+        break;
+      case 8:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      default:
+        FFNOTE = 0;
+        break;
+    }
     PT_SLEEP(mythread, PTdelay);
   }
 
