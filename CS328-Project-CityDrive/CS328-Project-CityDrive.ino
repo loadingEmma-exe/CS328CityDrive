@@ -622,22 +622,8 @@ int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    if(songFF){
-      divider = melody[FFNOTE + 1];
-
-      if (divider > 0) {
-        noteDuration = wholenote / divider;
-      } else {
-        noteDuration = (wholenote / abs(divider)) * 1.5;
-      }
-
-      tone(buzzer, melody[FFNOTE], noteDuration);
-      PT_SLEEP(mythread, PTdelay);
-    }
-    else if (!songFF){
-      noTone(buzzer);
-      PT_SLEEP(mythread, PTdelay);
-    }
+    tone(buzzer, NOTE_E5, noteDuration);
+    PT_SLEEP(mythread, PTdelay);
   }
 
   PT_END(mythread);
@@ -860,7 +846,7 @@ void loop() {
   PT_SCHEDULE(servoThread(&ptServo));
   PT_SCHEDULE(movementThread(&ptMovement));
   PT_SCHEDULE(cameraThread(&ptCamera));
-  //PT_SCHEDULE(musicThread(&ptMusic));
+  PT_SCHEDULE(musicThread(&ptMusic));
   PT_SCHEDULE(blinkThread(&ptBlink));
-  //PT_SCHEDULE(OLEDThread(&ptOLED));
+  PT_SCHEDULE(OLEDThread(&ptOLED));
 }
