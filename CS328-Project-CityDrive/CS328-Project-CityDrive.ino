@@ -1,9 +1,17 @@
+#include <SPI.h>
+#include <Wire.h>
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_GFX.h"
 #include "protothreads.h" //protothreading
 #include <SoftwareSerial.h>
 #include <Servo.h>
 #include <Pixy2.h>
+
+//========================
+// Bluetooth Defintions
+//========================
+
+#define BLUETOOTH_BAUD_RATE 38400
 
 //========================
 // OLED Defintions
@@ -51,15 +59,6 @@ byte RArrow[8] = { //Robot's right arrow sprite.
   0b00000000,
   0b00000000
 };
-
-int bitmapIdleX = (SCREEN_WIDTH - LOGO_WIDTH) / 2; //Centers the bitmap on the xaxis.
-int bitmapIdleY = (SCREEN_HEIGHT - LOGO_HEIGHT) / 2; //Centers the bitmap on the y-axis
-
-//========================
-// Bluetooth Defintions
-//========================
-
-#define BLUETOOTH_BAUD_RATE 38400
 
 //========================
 // Movement Defintions
@@ -621,12 +620,6 @@ int cameraThread(struct pt* mythread){ //barcode scanning
 int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
-  int melody[] = { //Final Fantasy Victory Jingle
-  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
-  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
-  NOTE_E5,4
-};
-
   for(;;){
     switch (FFNOTE){
       case 0:
@@ -713,15 +706,10 @@ int OLEDThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    if (hON){
-      display.drawBitmap(120, bitmapIdleY, LArrow, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); //Robot's left arrow
-      display.drawBitmap(4, bitmapIdleY, RArrow, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); //Robot's right arrow
-      PT_SLEEP(mythread, PTdelay);
-    }
-    if (!hON){
-      display.clearDisplay();
-      PT_SLEEP(mythread, PTdelay);
-    }
+    display.drawBitmap(120, (SCREEN_HEIGHT - LOGO_HEIGHT) / 2, LArrow, LOGO_WIDTH, LOGO_HEIGHT, YELLOW); //Robot's left arrow
+    display.drawBitmap(4, (SCREEN_HEIGHT - LOGO_HEIGHT) / 2, RArrow, LOGO_WIDTH, LOGO_HEIGHT, YELLOW); //Robot's right arrow
+    Serial.println("OLED");
+    PT_SLEEP(mythread, PTdelay);
   }
 
   PT_END(mythread);
@@ -784,42 +772,6 @@ int servoThread(struct pt* mythread){
     }
   }
   PT_END(mythread);
-}
-// ============================
-// MUSIC 
-// ============================
-void ffVictory(){
-  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
-
-    divider = melody[i + 1];
-
-    if (divider > 0) {
-      noteDuration = wholenote / divider;
-    } else {
-      noteDuration = (wholenote / abs(divider)) * 1.5;
-    }
-
-    tone(buzzer, melody[i], noteDuration);
-    delay(noteDuration);
-    noTone(buzzer);
-  }
-}
-
-void dearlyBeloved(){
-    for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
-
-    divider = melody1[i + 1];
-
-    if (divider > 0) {
-      noteDuration = wholenote / divider;
-    } else {
-      noteDuration = (wholenote / abs(divider)) * 1.5;
-    }
-
-    tone(buzzer, melody1[i], noteDuration);
-    delay(noteDuration);
-    noTone(buzzer);
-    }
 }
 
 // ============================
@@ -892,7 +844,7 @@ void loop() {
   PT_SCHEDULE(servoThread(&ptServo));
   PT_SCHEDULE(movementThread(&ptMovement));
   PT_SCHEDULE(cameraThread(&ptCamera));
-  PT_SCHEDULE(musicThread(&ptMusic));
+  //PT_SCHEDULE(musicThread(&ptMusic));
   PT_SCHEDULE(blinkThread(&ptBlink));
-  PT_SCHEDULE(OLEDThread(&ptOLED));
+  // PT_SCHEDULE(OLEDThread(&ptOLED));
 }
