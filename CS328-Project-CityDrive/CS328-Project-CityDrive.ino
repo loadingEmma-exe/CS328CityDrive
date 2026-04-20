@@ -37,14 +37,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init
 #define BLUETOOTH_BAUD_RATE 38400
 
 //========================
-// Ultrasonic Defintions
-//========================
-#define echoPin 22
-#define trigPin 23
-long duration;
-float distance;
-
-//========================
 // Movement Defintions
 //========================
 
@@ -249,6 +241,18 @@ Servo myServo;
 int dirLeft = 120;
 int dirStraight = 95;
 int dirRight = 60;
+
+//========================
+// UltraSonic Defintions
+//========================
+
+#define echoPin 22
+#define trigPin 23
+
+//Ultrasonic sensor variables
+long duration;
+float distance;
+int trigTriggerCount; //if 0 --> low, 1 --> high, 2 --> low
 
 //========================
 // Protothreads Defintions
@@ -646,7 +650,7 @@ int movementThread(struct pt* mythread){ //NOT TESTED
     }
 
     PT_SLEEP(mythread, PTdelay);
-    
+
   }
 
   PT_END(mythread);
@@ -669,12 +673,58 @@ int servoThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
-    PT_SLEEP(mythread, PTdelay);
-    //action
-    PT_SLEEP(mythread, PTdelay);
-  }
+    if (trigTriggerCount == 0){
+      // Set the trigPin condition
+      digitalWrite(trigPin, LOW);
+      trigTriggerCount++;
 
+      PT_SLEEP(mythread, PTdelay);
+    }
+    else if (trigTriggerCount == 1){
+      // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+      digitalWrite(trigPin, HIGH);
+      trigTriggerCount++;
+
+      PT_SLEEP(mythread, PTdelay);
+    }
+    else if (trigTriggerCount == 2){
+      digitalWrite(trigPin, LOW);
+      // The pulseIn function times the signal return after bouncing off the object
+      duration = pulseIn(echoPin, HIGH);
+      // Calculating the distance
+      distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+      // Displays the distance on the Serial Monitor
+      Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+      trigTriggerCount = 0;
+
+      PT_SLEEP(mythread, PTdelay);
+
+    }
+
+    if (Serial2.available()) {
+      char cmd = Serial2.read();
+      //servo shit
+
+      switch (cmd) {
+        case 'A':
+          myServo.write(dirRight);
+          Serial.println("Looking right");
+          break;
+
+        case 'C':
+          myServo.write(dirStraight);
+          Serial.println("Centered");
+          break;
+
+        case 'D':
+          myServo.write(dirLeft);
+          Serial.println("Looking left");
+          break;
+      }
+    
+      PT_SLEEP(mythread, PTdelay);
+    }
+  }
   PT_END(mythread);
 }
 // ============================
@@ -780,7 +830,7 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  // PT_SCHEDULE(servoThread(&ptServo));
+  PT_SCHEDULE(servoThread(&ptServo));
   PT_SCHEDULE(movementThread(&ptMovement));
   PT_SCHEDULE(cameraThread(&ptCamera));
   //PT_SCHEDULE(musicThread(&ptMusic));
