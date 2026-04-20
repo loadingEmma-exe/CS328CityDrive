@@ -3,6 +3,7 @@
 #include "protothreads.h" //protothreading
 #include <SoftwareSerial.h>
 #include <Servo.h>
+#include <Pixy2.h>
 
 //========================
 // OLED Defintions
@@ -229,11 +230,14 @@ int divider = 0, noteDuration = 0;
 // sample time in ms
 const unsigned long sampleTime = 100;
 
-int songFF = 0;
+int songFF = 0; //in camera, will turn to 1. When played will turn to 0
 int FFNOTE = sizeof(melody) / sizeof(melody[0]);
-int songKH = 0;
+
+int songDB = 0;
 int KHNOTE;
-int song = 0;
+
+int songAM = 0;
+int AMNOTE;
 
 //========================
 // Servo Defintions
@@ -257,6 +261,44 @@ pt ptMovement;
 pt ptMusic;
 pt ptOLED;
 pt ptServo;
+
+//========================
+// Pixy Camera Defintions
+//========================
+
+Pixy2 pixy;
+
+void pixyBarcode(){
+  pixy.line.getAllFeatures(); //get line features
+  // pixy.line.getMainFeatures(); // Could use this too
+  if (pixy.line.barcodes) // detected road sign
+  {
+    int code = pixy.line.barcodes[0].m_code;
+    switch (code){
+      case 0:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 1:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 2:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 3:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 4:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 5:
+        Serial.println(code + " Pixy Read");
+      break;
+      default:
+        Serial.println("Default Pixy Read");
+      break;
+    }
+  }
+}
 
 // ============================
 // Light control
@@ -509,13 +551,38 @@ int blinkThread(struct pt* mythread){
   PT_END(mythread);
 }
 
-int cameraThread(struct pt* mythread){
+int cameraThread(struct pt* mythread){ //barcode scanning
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
-    PT_SLEEP(mythread, PTdelay);
-    //action
+    pixy.line.getAllFeatures(); //get line features
+    if (pixy.line.barcodes) // detected road sign
+    {
+      int code = pixy.line.barcodes[0].m_code;
+      switch (code){
+        case 0:
+          Serial.println("0 Pixy Read");
+        break;
+        case 1:
+          Serial.println("1 Pixy Read");
+        break;
+        case 2:
+          Serial.println("2 Pixy Read");
+        break;
+        case 3: case 14:
+          Serial.println("3 Pixy Read");
+        break;
+        case 4:
+          Serial.println("4 Pixy Read");
+        break;
+        case 5:
+          Serial.println("5 Pixy Read");
+        break;
+        default:
+          Serial.println("Default Pixy Read");
+        break;
+      }
+    }
     PT_SLEEP(mythread, PTdelay);
   }
 
@@ -526,9 +593,9 @@ int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    if(!songFF){ //if song is not playing and needs to play
+    if(songFF){ //if needs to play
       
-      divider = melody[i + 1];
+      divider = melody[FFNOTE + 1];
 
       if (divider > 0) {
         noteDuration = wholenote / divider;
@@ -536,27 +603,50 @@ int musicThread(struct pt* mythread){
         noteDuration = (wholenote / abs(divider)) * 1.5;
       }
 
-      tone(buzzer, melody[i], noteDuration);
+      tone(buzzer, melody[FFNOTE], noteDuration);
       
       FFNOTE += 2;
+      songFF = !songFF;
     }
 
-    if(songFF){ //if song is playing and needs to pause
+    if(!songFF || !songDB| !songAM){ //if song is playing and needs to stop
       noTone(buzzer);
     }
   }
+  PT_SLEEP(mythread, PTdelay);
 
   PT_END(mythread);
 }
 
-int movementThread(struct pt* mythread){
+int movementThread(struct pt* mythread){ //NOT TESTED
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
+    if (Serial2.available()) {
+      char cmd = Serial2.read();
+      
+      switch (cmd)
+      {
+        case 'F': case 'f':
+          Forward(128);
+          break;
+        
+        case 'S': case 's':
+          StopMotors();
+          break;
+
+        case 'L': case 'l':
+          Left(100);
+          break;
+
+        case 'R': case 'r':
+          Right(100);
+          break;
+      }
+    }
+
     PT_SLEEP(mythread, PTdelay);
-    //action
-    PT_SLEEP(mythread, PTdelay);
+    
   }
 
   PT_END(mythread);
@@ -590,8 +680,7 @@ int servoThread(struct pt* mythread){
 // ============================
 // MUSIC 
 // ============================
-void ffVictory()
-{
+void ffVictory(){
   for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
     divider = melody[i + 1];
@@ -608,8 +697,7 @@ void ffVictory()
   }
 }
 
-void dearlyBeloved()
-{
+void dearlyBeloved(){
     for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
 
     divider = melody1[i + 1];
@@ -634,8 +722,8 @@ void setup() {
   myServo.attach(13); //Pin for servomotor input.
   myServo.write(dirStraight); // start centered
   Serial2.begin(BLUETOOTH_BAUD_RATE);
-
-  // Serial.println("Commands: L (left), C (center), R (right)");
+  pixy.init();
+  pixy.changeProg("line");
 
   //Ultrasonic sensor
   pinMode(trigPin, OUTPUT);
@@ -692,36 +780,10 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-
-  if (Serial2.available()) {
-
-    char cmd = Serial2.read();
-    
-    switch (cmd)
-    {
-      case 'F': case 'f':
-        Forward(128);
-        break;
-      
-      case 'S': case 's':
-        StopMotors();
-        break;
-
-      case 'L': case 'l':
-        Left(100);
-        break;
-
-      case 'R': case 'r':
-        Right(100);
-        break;
-    }
-  }
-
   // PT_SCHEDULE(servoThread(&ptServo));
   PT_SCHEDULE(movementThread(&ptMovement));
-  // PT_SCHEDULE(cameraThread(&ptCamera));
-  // PT_SCHEDULE(musicThread(&ptMusic));
+  PT_SCHEDULE(cameraThread(&ptCamera));
+  //PT_SCHEDULE(musicThread(&ptMusic));
   PT_SCHEDULE(blinkThread(&ptBlink));
-  // PT_SCHEDULE(OLEDThread(&ptOLED));
-
+  //PT_SCHEDULE(OLEDThread(&ptOLED));
 }
