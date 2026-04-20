@@ -564,23 +564,23 @@ int cameraThread(struct pt* mythread){ //barcode scanning
     {
       int code = pixy.line.barcodes[0].m_code;
       switch (code){
-        case 0:
-          Serial.println("0 Pixy Read");
+        case 0: //start
+          Serial.println("0 Pixy Read, Start");
         break;
-        case 1:
-          Serial.println("1 Pixy Read");
+        case 1: //Turn Right
+          Serial.println("1 Pixy Read, Right");
         break;
-        case 2:
-          Serial.println("2 Pixy Read");
+        case 2: //U turn right
+          Serial.println("2 Pixy Read, Right U turn");
         break;
-        case 3: case 14:
-          Serial.println("3 Pixy Read");
+        case 3: case 14: //U turn left
+          Serial.println("3 Pixy Read, Left U turn");
         break;
-        case 4:
-          Serial.println("4 Pixy Read");
+        case 4: //Turn Left
+          Serial.println("4 Pixy Read, Left turn");
         break;
-        case 5:
-          Serial.println("5 Pixy Read");
+        case 5: //stop
+          Serial.println("5 Pixy Read, Stop");
         break;
         default:
           Serial.println("Default Pixy Read");
