@@ -622,8 +622,7 @@ int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    if(songFF){ //if needs to play
-      
+    if(songFF){
       divider = melody[FFNOTE + 1];
 
       if (divider > 0) {
@@ -633,16 +632,13 @@ int musicThread(struct pt* mythread){
       }
 
       tone(buzzer, melody[FFNOTE], noteDuration);
-      
-      FFNOTE += 2;
-      songFF = !songFF;
+      PT_SLEEP(mythread, PTdelay);
     }
-
-    if(!songFF || !songDB| !songAM){ //if song is playing and needs to stop
+    else if (!songFF){
       noTone(buzzer);
+      PT_SLEEP(mythread, PTdelay);
     }
   }
-  PT_SLEEP(mythread, PTdelay);
 
   PT_END(mythread);
 }
