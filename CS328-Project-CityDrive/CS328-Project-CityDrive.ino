@@ -30,6 +30,31 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init
 #define YELLOW 0xFFFF00
 #define WHITE 0xFFFFF
 
+byte LArrow[8] = { //Robot's left arrow sprite.
+  0b00000000,
+  0b00110000,
+  0b00111100,
+  0b01111110,
+  0b00111100,
+  0b00110000,
+  0b00000000,
+  0b00000000
+};
+
+byte RArrow[8] = { //Robot's right arrow sprite.
+  0b00000000,
+  0b00001100,
+  0b00111100,
+  0b01111110,
+  0b00111100,
+  0b00001100,
+  0b00000000,
+  0b00000000
+};
+
+int bitmapIdleX = (SCREEN_WIDTH - LOGO_WIDTH) / 2; //Centers the bitmap on the xaxis.
+int bitmapIdleY = (SCREEN_HEIGHT - LOGO_HEIGHT) / 2; //Centers the bitmap on the y-axis
+
 //========================
 // Bluetooth Defintions
 //========================
@@ -660,10 +685,15 @@ int OLEDThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
-    PT_SLEEP(mythread, PTdelay);
-    //action
-    PT_SLEEP(mythread, PTdelay);
+    if (hON){
+      display.drawBitmap(120, bitmapIdleY, LArrow, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); //Robot's left arrow
+      display.drawBitmap(4, bitmapIdleY, RArrow, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); //Robot's right arrow
+      PT_SLEEP(mythread, PTdelay);
+    }
+    if (!hON){
+      display.clearDisplay();
+      PT_SLEEP(mythread, PTdelay);
+    }
   }
 
   PT_END(mythread);
@@ -812,6 +842,7 @@ void setup() {
 
   Serial.begin(9600);
   Serial2.begin(BLUETOOTH_BAUD_RATE);
+
   display.clearDisplay();
   display.display();
 
