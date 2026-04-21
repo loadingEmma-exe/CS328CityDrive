@@ -1,39 +1,47 @@
-#include <Wire.h>
-#include "Adafruit_TCS34725.h"
+#include <Wire.h>                 // Allows Arduino to communicate using I2C
+#include "Adafruit_TCS34725.h"   // Library for TCS34725 RGB color sensors
 
 // ==================================================
 // MOTOR PINS (Arduino Mega)
+// These pins control the left and right motors
 // ==================================================
-#define MotorPWM_A 4     // Left motor PWM
-#define MotorPWM_B 5     // Right motor PWM
+#define MotorPWM_A 4     // PWM speed control for left motor
+#define MotorPWM_B 5     // PWM speed control for right motor
 
-#define INA1A 32
-#define INA2A 34
-#define INA1B 30
-#define INA2B 36
+#define INA1A 32         // Left motor direction pin 1
+#define INA2A 34         // Left motor direction pin 2
+#define INA1B 30         // Right motor direction pin 1
+#define INA2B 36         // Right motor direction pin 2
 
 // ==================================================
-// SENSOR CHANNELS (TCA9548A)
+// SENSOR CHANNELS (TCA9548A I2C Multiplexer)
+// Each RGB sensor is plugged into a separate mux channel
 // ==================================================
 #define LEFT_SENSOR_CHANNEL    0
 #define CENTER_SENSOR_CHANNEL  1
 #define RIGHT_SENSOR_CHANNEL   2
-#define rgbLED 48
+
+#define rgbLED 48        // Turns sensor LEDs ON/OFF
 
 // ==================================================
 // SPEED SETTINGS
+// PWM values from 0-255
+// Higher number = faster motor speed
 // ==================================================
-#define PWM_FORWARD    75
-#define PWM_TURN       85
-#define PWM_SOFTTURN   55
-#define PWM_REVERSE    70
+#define PWM_FORWARD    75   // Normal forward speed
+#define PWM_TURN       85   // Sharp turning speed
+#define PWM_SOFTTURN   55   // Gentle turning speed
+#define PWM_REVERSE    70   // Reverse speed
 
 // ==================================================
-// BLACK DETECTION THRESHOLD
-// Change after calibration
+// BLACK LINE DETECTION THRESHOLD
+// Lower sensor reading than this = black line detected
 // ==================================================
 int threshold = 20;
 
+// ==================================================
+// Create sensor object
+// 24ms integration = slower but better light reading
 // ==================================================
 Adafruit_TCS34725 tcs =
 Adafruit_TCS34725(
@@ -43,77 +51,102 @@ TCS34725_GAIN_1X
 
 // ==================================================
 // SELECT TCA9548A CHANNEL
+// Switches which sensor is active
 // ==================================================
 void tcaSelect(uint8_t channel)
 {
-  Wire.beginTransmission(0x70);
-  Wire.write(1 << channel);
+  Wire.beginTransmission(0x70); // TCA9548A default address
+  Wire.write(1 << channel);     // Enable selected channel
   Wire.endTransmission();
 }
 
 // ==================================================
-// READ SENSOR + DETECT BLACK
+// CHECK IF SENSOR SEES BLACK LINE
+// Returns true if dark surface detected
 // ==================================================
 bool blackDetected(uint8_t channel)
 {
-  tcaSelect(channel);
-  delay(20);
+  tcaSelect(channel);   // Select requested sensor
+  delay(20);           // Wait for channel switch
 
-  tcs.begin();   // important
+  tcs.begin();         // Reinitialize sensor on that channel
 
-  uint16_t r,g,b,c;
-  tcs.getRawData(&r,&g,&b,&c);
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c); // Read sensor values
 
-  Serial.println(c);
+  Serial.println(c);   // Print brightness value for debugging
 
-  return (c < threshold);
+  return (c < threshold); // If darker than threshold = black line
 }
 
+// ==================================================
+// READ BRIGHTNESS VALUE ONLY
+// Returns CLEAR channel value
+// Used for testing/calibration
+// ==================================================
 uint16_t readClear(uint8_t channel)
 {
   tcaSelect(channel);
   delay(15);
 
-  tcs.begin();      // VERY IMPORTANT
+  tcs.begin();
   delay(5);
 
-  uint16_t r,g,b,c;
-  tcs.getRawData(&r,&g,&b,&c);
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c);
 
-  return c;
+  return c; // Return brightness value
 }
 
 // ==================================================
-void setup() {
- Serial.begin(9600);
- Wire.begin();
+// SETUP
+// Runs once when robot powers on
+// ==================================================
+void setup()
+{
+  Serial.begin(9600); // Open serial monitor
+  Wire.begin();       // Start I2C communication
 
- pinMode(rgbLED, OUTPUT);
- digitalWrite(rgbLED, HIGH);   // try LOW first
+  // Set LED control pin as output
+  pinMode(rgbLED, OUTPUT);
 
- tcaSelect(0);
+  // Turn sensor LEDs ON
+  digitalWrite(rgbLED, HIGH);
 
- if(!tcs.begin()) Serial.println("No sensor");
- else Serial.println("Sensor OK");
+  // Start by selecting left sensor
+  tcaSelect(0);
+
+  // Check if sensor responds
+  if (!tcs.begin())
+    Serial.println("No sensor");
+  else
+    Serial.println("Sensor OK");
 }
 
+// ==================================================
+// LOOP
+// Runs over and over forever
+// Currently prints brightness values from all 3 sensors
+// ==================================================
 void loop()
 {
   Serial.print("L:");
-  Serial.print(readClear(0));
+  Serial.print(readClear(0));   // Left sensor brightness
 
   Serial.print(" C:");
-  Serial.print(readClear(1));
+  Serial.print(readClear(1));   // Center sensor brightness
 
   Serial.print(" R:");
-  Serial.println(readClear(2));
+  Serial.println(readClear(2)); // Right sensor brightness
 
-  delay(500);
+  delay(500); // Update twice per second
 }
 
 // ==================================================
 // MOTOR FUNCTIONS
 // ==================================================
+
+// Move robot forward
 void Forward()
 {
   analogWrite(MotorPWM_A, PWM_FORWARD);
@@ -125,6 +158,7 @@ void Forward()
   digitalWrite(INA2B, LOW);
 }
 
+// Move robot backward
 void Reverse()
 {
   analogWrite(MotorPWM_A, PWM_REVERSE);
@@ -136,6 +170,7 @@ void Reverse()
   digitalWrite(INA2B, HIGH);
 }
 
+// Turn robot left sharply
 void Left()
 {
   analogWrite(MotorPWM_A, PWM_TURN);
@@ -147,6 +182,7 @@ void Left()
   digitalWrite(INA2B, LOW);
 }
 
+// Turn robot right sharply
 void Right()
 {
   analogWrite(MotorPWM_A, PWM_TURN);
@@ -158,6 +194,7 @@ void Right()
   digitalWrite(INA2B, HIGH);
 }
 
+// Gentle left turn while moving forward
 void LeftSoft()
 {
   analogWrite(MotorPWM_A, PWM_SOFTTURN);
@@ -169,6 +206,7 @@ void LeftSoft()
   digitalWrite(INA2B, LOW);
 }
 
+// Gentle right turn while moving forward
 void RightSoft()
 {
   analogWrite(MotorPWM_A, PWM_TURN);
@@ -180,6 +218,7 @@ void RightSoft()
   digitalWrite(INA2B, LOW);
 }
 
+// Stop both motors
 void Stop()
 {
   digitalWrite(INA1A, LOW);
