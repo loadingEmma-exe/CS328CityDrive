@@ -127,12 +127,16 @@ float distance;
 
 //Black line detection threshold
 int threshold = 20;
+bool sensorToggle = false;
 
 //Pixy2 Camera declaration
 Pixy2 pixy;
 
 //Sensor object
-Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS,TCS34725_GAIN_1X);
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS,TCS34725_GAIN_1X);
+
+//
+uint16_t r, g, b, c;
 
 /*Buzzer Music Stuff*/
 
@@ -421,10 +425,54 @@ uint16_t readClear(uint8_t channel)
   tcs.begin();
   delay(5);
 
-  uint16_t r, g, b, c;
   tcs.getRawData(&r, &g, &b, &c);
 
   return c; // Return brightness value
+}
+
+void lineReact()
+{
+  int leftValue = readClear(LEFT_SENSOR_CHANNEL);
+  int centerValue = readClear(CENTER_SENSOR_CHANNEL);
+  int rightValue = readClear(RIGHT_SENSOR_CHANNEL);
+
+  //Debug
+  Serial.print("L:");
+  Serial.println(leftValue);   // Left sensor brightness
+
+  Serial.print(" C:");
+  Serial.println(centerValue);   // Center sensor brightness
+
+  Serial.print(" R:");
+  Serial.println(rightValue); // Right sensor brightness
+
+  if (centerValue <= 3 || leftValue <= 3 && rightValue <= 3)
+  {
+    Backward(60);
+    Serial.println("Backing..");
+
+  }
+  else if  (leftValue <= 3)
+  {
+    Backward(60);
+    delay(500);
+    Right(60);
+    Serial.println("Backing + turning right..");
+
+  }
+  else if (rightValue <= 3)
+  {
+    Backward(60);
+    delay(500);
+    Left(60);
+    Serial.println("Backing + turning left");
+    
+  }
+  else
+  {
+    Forward(60);
+    Serial.println("Forwards..");
+  }
 }
 
 void setup() 
@@ -433,6 +481,8 @@ void setup()
   pixy.init();
   pixy.changeProg("line");
   Serial2.begin(BLUETOOTH_BAUD_RATE);
+  Wire.begin();
+  delay(50);
 
   // Motor pins
   pinMode(MotorPWM_L, OUTPUT);
@@ -514,8 +564,23 @@ void loop() {
 
       case 'X':
         pixyBarcode();
+        break;
+      
+      case 'P':
+        sensorToggle = true;
+        break;
+        Amaurot();
+      case 'O':
+        sensorToggle = false;
+        StopMotors();
+        break;
     }
   }
+
+    if (sensorToggle)
+    {
+      lineReact();
+    }
 
     // Set the trigPin condition
     digitalWrite(trigPin, LOW);
@@ -531,13 +596,4 @@ void loop() {
     // Displays the distance on the Serial Monitor
 //Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
     delay(100);
-
-  Serial.print("L:");
-  Serial.print(readClear(0));   // Left sensor brightness
-
-  Serial.print(" C:");
-  Serial.print(readClear(1));   // Center sensor brightness
-
-  Serial.print(" R:");
-  Serial.println(readClear(2)); // Right sensor brightness
 }
