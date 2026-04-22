@@ -115,17 +115,24 @@
 #define INA1B 30
 #define INA2B 36
 
-#define LTsensor_l  8   // left sensor (yellow)
-#define LTsensor_c  7   // center sensor (green)
-#define LTsensor_r  6   // right sensor (white)
+//Color sensors
+#define LEFT_SENSOR_CHANNEL    0
+#define CENTER_SENSOR_CHANNEL  1
+#define RIGHT_SENSOR_CHANNEL   2
 #define RGBLED 48
 
 //Ultrasonic sensor variables
 long duration;
 float distance;
 
+//Black line detection threshold
+int threshold = 20;
+
 //Pixy2 Camera declaration
 Pixy2 pixy;
+
+//Sensor object
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS,TCS34725_GAIN_1X);
 
 /*Buzzer Music Stuff*/
 
@@ -176,6 +183,71 @@ int melody2[] = { //Amaurot (Neath Dark Waters - FFXIV)
 // this calculates the duration of a whole note in ms
 int wholenote = (60000 * 4) / tempo;
 int divider = 0, noteDuration = 0;
+
+void ffVictory()
+{
+  int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+
+  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+
+  divider = melody[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void Amaurot()
+{
+  int notes = sizeof(melody2) / sizeof(melody2[0]) / 2; 
+  for (int i = 0; i < sizeof(melody2) / sizeof(melody2[0]); i += 2) {
+
+  divider = melody2[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody2[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void dearlyBeloved()
+{
+  int notes = sizeof(melody1) / sizeof(melody1[0]) / 2; 
+  for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
+
+  divider = melody1[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody1[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+
+
+
 /*Servomotor*/
 Servo myServo;
 // Defines the number of steps per rotation
@@ -281,67 +353,6 @@ void Accelerate(int maxSpeed)
   }
 }
 
-void ffVictory()
-{
-  int notes = sizeof(melody) / sizeof(melody[0]) / 2;
-
-  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
-
-  divider = melody[i + 1];
-
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
-
-  tone(buzzer, melody[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
-  }
-}
-
-void Amaurot()
-{
-  int notes = sizeof(melody2) / sizeof(melody2[0]) / 2; 
-  for (int i = 0; i < sizeof(melody2) / sizeof(melody2[0]); i += 2) {
-
-  divider = melody2[i + 1];
-
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
-
-  tone(buzzer, melody2[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
-  }
-}
-
-void dearlyBeloved()
-{
-  int notes = sizeof(melody1) / sizeof(melody1[0]) / 2; 
-  for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
-
-  divider = melody1[i + 1];
-
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
-
-  tone(buzzer, melody1[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
-  }
-}
-
 void pixyBarcode()
 {
   pixy.line.getAllFeatures(); //get line features
@@ -367,6 +378,55 @@ void pixyBarcode()
   }
 }
 
+// ==================================================
+// SELECT TCA9548A CHANNEL
+// Switches which sensor is active
+// ==================================================
+void tcaSelect(uint8_t channel)
+{
+  Wire.beginTransmission(0x70); // TCA9548A default address
+  Wire.write(1 << channel);     // Enable selected channel
+  Wire.endTransmission();
+}
+
+// ==================================================
+// CHECK IF SENSOR SEES BLACK LINE
+// Returns true if dark surface detected
+// ==================================================
+bool blackDetected(uint8_t channel)
+{
+  tcaSelect(channel);   // Select requested sensor
+  delay(20);           // Wait for channel switch
+
+  tcs.begin();         // Reinitialize sensor on that channel
+
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c); // Read sensor values
+
+  Serial.println(c);   // Print brightness value for debugging
+
+  return (c < threshold); // If darker than threshold = black line
+}
+
+// ==================================================
+// READ BRIGHTNESS VALUE ONLY
+// Returns CLEAR channel value
+// Used for testing/calibration
+// ==================================================
+uint16_t readClear(uint8_t channel)
+{
+  tcaSelect(channel);
+  delay(15);
+
+  tcs.begin();
+  delay(5);
+
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c);
+
+  return c; // Return brightness value
+}
+
 void setup() 
 {
   Serial.begin(9600);
@@ -383,10 +443,16 @@ void setup()
   pinMode(INA2B, OUTPUT);
 
   //Line Sensor pins
-  pinMode(LTsensor_l, INPUT);
-  pinMode(LTsensor_c, INPUT);
-  pinMode(LTsensor_r, INPUT);
   pinMode(RGBLED, OUTPUT);
+  digitalWrite(RGBLED, HIGH);
+  // Start by selecting left sensor
+  tcaSelect(0);
+
+  // Check if sensor responds
+  if (!tcs.begin())
+    Serial.println("No sensor");
+  else
+    Serial.println("Sensor OK");
 
   StopMotors();
   delay(1000);
@@ -463,6 +529,15 @@ void loop() {
     // Calculating the distance
     distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
     // Displays the distance on the Serial Monitor
-    Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+//Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
     delay(100);
+
+  Serial.print("L:");
+  Serial.print(readClear(0));   // Left sensor brightness
+
+  Serial.print(" C:");
+  Serial.print(readClear(1));   // Center sensor brightness
+
+  Serial.print(" R:");
+  Serial.println(readClear(2)); // Right sensor brightness
 }
