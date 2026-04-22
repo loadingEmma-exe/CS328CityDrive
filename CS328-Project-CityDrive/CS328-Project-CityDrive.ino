@@ -290,6 +290,21 @@ pt ptMusic;
 pt ptOLED;
 pt ptServo;
 
+//=======================
+// Line Sensor Defintions
+//=======================
+
+//line sensors themselves
+#define LNSensorL  8  // left sensor 
+#define LNSensorC  7  // center sensor 
+#define LNSensorR  6  // right sensor 
+
+//Line Sensor pins for the little lights
+pinMode(LNSensorL, INPUT);
+pinMode(LNSensorC, INPUT);
+pinMode(LNSensorR, INPUT);
+//pinMode(RGBLED, OUTPUT);
+
 //========================
 // Pixy Camera Defintions
 //========================
@@ -841,10 +856,26 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  PT_SCHEDULE(servoThread(&ptServo));
-  PT_SCHEDULE(movementThread(&ptMovement));
-  PT_SCHEDULE(cameraThread(&ptCamera));
-  //PT_SCHEDULE(musicThread(&ptMusic));
-  PT_SCHEDULE(blinkThread(&ptBlink));
-  // PT_SCHEDULE(OLEDThread(&ptOLED));
+  // PT_SCHEDULE(servoThread(&ptServo));
+  // PT_SCHEDULE(movementThread(&ptMovement));
+  // PT_SCHEDULE(cameraThread(&ptCamera));
+  // //PT_SCHEDULE(musicThread(&ptMusic));
+  // PT_SCHEDULE(blinkThread(&ptBlink));
+  // // PT_SCHEDULE(OLEDThread(&ptOLED));
+
+  Serial.println(LNSensorL +  LNSensorC + LNSensorR);
+
+  if (LNSensorL == 1 && LNSensorC == 1 && LNSensorR == 1){ //must stop, backup and troubleshoot
+    
+  }
+  else if (LNSensorL == 0 && (LNSensorC == 1 || LNSensorC == 0) && LNSensorR == 1){ //turn left
+
+  }
+  else if (LNSensorL == 1 && (LNSensorC == 1 || LNSensorC ==0 ) && LNSensorR == 0){ //turn right
+    
+  }
+  else { //move forward
+
+  }
+
 }
