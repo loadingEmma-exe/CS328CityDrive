@@ -77,9 +77,7 @@ int right = 0;
 int left = 0;
 int moving = 0;
 int hazards = 0;
-
 int movement = 0;
-int movementPeriod = 0;
 
 //========================
 // Timer Defintions
@@ -706,39 +704,28 @@ int movementThread(struct pt* mythread){
 
       //Forward
       case 0:
-        Forward(90);
-        PT_SLEEP(mythread, 60); //was 60
+        Forward(100);
+        PT_SLEEP(mythread, 60);
         StopMotors();
       break;
 
       //Right turn + forward
       case 1:
-        Right(150);
-        PT_SLEEP(mythread, 300); //was 550
+        Right(130);
+        PT_SLEEP(mythread, 550);
         StopMotors();
-        if (movementPeriod > 4 && movement == 1){
-          movementPeriod++;
-        }
-        else{
-          movement = 0;
-          movementPeriod = 0;
-        }
+        movement = 0;
       break;
 
       //Right U-Turn
       case 2:
-        // Forward(150);
-        // PT_SLEEP(mythread, 150);
-        Right(150);
-        PT_SLEEP(mythread, 300); //was 550
-        StopMotors();
-        if (movementPeriod > 4 && movement == 1){
-          movementPeriod++;
-        }
-        else{
-          movement = 1;
-          movementPeriod = 0;
-        }
+        Right(130);
+        PT_SLEEP(mythread, 30);
+        Forward(60);
+        PT_SLEEP(mythread, 30);
+        Right(130);
+        Forward(100);
+        movement = 0;
       break;
 
       //Left U-Turn
