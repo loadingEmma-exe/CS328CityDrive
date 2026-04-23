@@ -610,29 +610,29 @@ int cameraThread(struct pt* mythread){ //barcode scanning
 
         case 0: case 15: //start
           Serial.println("0 Pixy Read, Start");
-          if(movement == 0){
+          if(movement >= 0 && movement < 40){
             Accelerate(80);
             movement++;
           }
-          else if (movement == 40){
+          else if (movement == 30){
             Halt(80);
             movement++;
           }
         break;
 
         case 1: //Turn Right
-          if(movement > 40 && movement < 70){
-            Right(80);
+          if(movement > 30 && movement < 70){
+            Right(150);
             movement++;
           }
-          else if (movement >= 70 && movement < 120){
-            Accelerate(80);
-            movement++;
-          }
-          else if (movement >= 120){
-            Halt(80);
-            movement++;
-          }
+          // else if (movement >= 70 && movement < 120){
+          //   Accelerate(100);
+          //   movement++;
+          // }
+          // else if (movement >= 120){
+          //   Halt(100);
+          //   movement++;
+          // }
           Serial.println("1 Pixy Read, Right");
         break;
 
@@ -866,7 +866,7 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  PT_SCHEDULE(servoThread(&ptServo));
+  //PT_SCHEDULE(servoThread(&ptServo));
   //PT_SCHEDULE(movementThread(&ptMovement));
   PT_SCHEDULE(cameraThread(&ptCamera));
   //PT_SCHEDULE(musicThread(&ptMusic));
