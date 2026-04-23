@@ -184,6 +184,50 @@ int melody2[] = { //Amaurot (Neath Dark Waters - FFXIV)
   NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_DS5, 8, NOTE_D5, 4, NOTE_DS5, 8, NOTE_F5, 2,
 };
 
+int melody3[] = { //Eternal Wind - FF3
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8, 
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8, 
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+  
+  NOTE_D5, 2, NOTE_G5, 4, NOTE_E5, 2, NOTE_C5, 4, NOTE_D5, 4, NOTE_E5, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D5, 2, NOTE_E5, 4, NOTE_C5, 2, NOTE_D5, 4, NOTE_B4, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8, 
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+  
+  NOTE_D5, 2, NOTE_G5, 4, NOTE_E5, 2, NOTE_C5, 4, NOTE_D5, 4, NOTE_E5, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D5, 2, NOTE_E5, 4, NOTE_C5, 2, NOTE_D5, 4, NOTE_B4, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_B4, 16, NOTE_C5, 16, NOTE_D5, 16, NOTE_E5, 16, NOTE_FS5, 16, NOTE_GS5, 16, NOTE_A5, 2,
+  NOTE_E5, 16, NOTE_E5, 16, NOTE_G5, 16, NOTE_A5, 8, NOTE_C6, 8, NOTE_B5, 8, NOTE_G5, 8, NOTE_A5, 2, 
+  NOTE_E5, 4, NOTE_D5, 8, NOTE_E5, 2,
+
+  NOTE_E5, 4, NOTE_G5, 8, NOTE_G5, 4, NOTE_D5, 8, NOTE_D5, 16, NOTE_D5, 16, NOTE_E5, 16, NOTE_F5, 4,
+  NOTE_F5, 4, NOTE_E5, 4, NOTE_D5, 4, NOTE_E5, 2, NOTE_GS5, 2,
+
+  NOTE_A5, 2, NOTE_E5, 8, NOTE_E5, 8, NOTE_G5, 8, NOTE_A5, 4, NOTE_C6, 4, NOTE_B5, 4, NOTE_G5, 4, 
+  NOTE_A5, 2, NOTE_E5, 4, NOTE_D5, 8, NOTE_E5, 2, NOTE_A5, 2, NOTE_A5, 8, NOTE_G5, 8, NOTE_F5, 8,
+  NOTE_E5, 4, NOTE_D5, 4, NOTE_D5, 16, NOTE_C5, 4, NOTE_D5, 4, NOTE_E5, 2, 
+
+
+  };
+
 // this calculates the duration of a whole note in ms
 int wholenote = (60000 * 4) / tempo;
 int divider = 0, noteDuration = 0;
@@ -243,6 +287,26 @@ void dearlyBeloved()
   }
 
   tone(buzzer, melody1[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void eternalWind()
+{
+  int notes = sizeof(melody3) / sizeof(melody3[0]) / 2; 
+  for (int i = 0; i < sizeof(melody3) / sizeof(melody3[0]); i += 2) {
+
+  divider = melody3[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody3[i], noteDuration);
   delay(noteDuration);
   noTone(buzzer);
   delay(20);
@@ -564,6 +628,7 @@ void loop() {
 
       case 'X':
         pixyBarcode();
+        eternalWind();
         break;
       
       case 'P':
