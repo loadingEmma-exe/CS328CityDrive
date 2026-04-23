@@ -77,6 +77,7 @@ int right = 0;
 int left = 0;
 int moving = 0;
 int hazards = 0;
+int movement = 0;
 
 //========================
 // Timer Defintions
@@ -294,21 +295,23 @@ pt ptServo;
 // Line Sensor Defintions
 //=======================
 
-//line sensors themselves
-#define LNSensorL  8  // left sensor 
-#define LNSensorC  7  // center sensor 
-#define LNSensorR  6  // right sensor 
+// //line sensors themselves
+// #define LNSensorL  8  // left sensor 
+// #define LNSensorC  7  // center sensor 
+// #define LNSensorR  6  // right sensor 
 
-//Line Sensor pins for the little lights
-pinMode(LNSensorL, INPUT);
-pinMode(LNSensorC, INPUT);
-pinMode(LNSensorR, INPUT);
-//pinMode(RGBLED, OUTPUT);
+// //Line Sensor pins for the little lights
+// pinMode(LNSensorL, INPUT);
+// pinMode(LNSensorC, INPUT);
+// pinMode(LNSensorR, INPUT);
+// //pinMode(RGBLED, OUTPUT);
 
 //========================
 // Pixy Camera Defintions
 //========================
 
+int looking = 0;
+int prevdistance = 100;
 Pixy2 pixy;
 
 void pixyBarcode(){
@@ -599,27 +602,55 @@ int cameraThread(struct pt* mythread){ //barcode scanning
 
   for(;;){
     pixy.line.getAllFeatures(); //get line features
+
     if (pixy.line.barcodes) // detected road sign
     {
       int code = pixy.line.barcodes[0].m_code;
       switch (code){
-        case 0: //start
+
+        case 0: case 15: //start
           Serial.println("0 Pixy Read, Start");
+          if(movement == 0){
+            Accelerate(80);
+            movement++;
+          }
+          else if (movement == 40){
+            Halt(80);
+            movement++;
+          }
         break;
+
         case 1: //Turn Right
+          if(movement > 40 && movement < 70){
+            Right(80);
+            movement++;
+          }
+          else if (movement >= 70 && movement < 120){
+            Accelerate(80);
+            movement++;
+          }
+          else if (movement >= 120){
+            Halt(80);
+            movement++;
+          }
           Serial.println("1 Pixy Read, Right");
         break;
+
         case 2: //U turn right
           Serial.println("2 Pixy Read, Right U turn");
+          //Right();
         break;
         case 3: case 14: //U turn left
           Serial.println("3 Pixy Read, Left U turn");
+          //Left();
         break;
         case 4: //Turn Left
           Serial.println("4 Pixy Read, Left turn");
+          //Left();
         break;
         case 5: //stop
           Serial.println("5 Pixy Read, Stop");
+          //Halt();
         break;
         default:
           Serial.println("Default Pixy Read");
@@ -683,39 +714,18 @@ int musicThread(struct pt* mythread){
   PT_END(mythread);
 }
 
-int movementThread(struct pt* mythread){ //NOT TESTED
-  PT_BEGIN(mythread);
+// int movementThread(struct pt* mythread){ //NOT TESTED
+//   PT_BEGIN(mythread);
 
-  for(;;){
-    if (Serial2.available()) {
-      char cmd = Serial2.read();
-      
-      switch (cmd)
-      {
-        case 'F': case 'f':
-          Forward(128);
-          break;
-        
-        case 'S': case 's':
-          StopMotors();
-          break;
+//   for(;;){
+    
 
-        case 'L': case 'l':
-          Left(100);
-          break;
+//     PT_SLEEP(mythread, PTdelay);
 
-        case 'R': case 'r':
-          Right(100);
-          break;
-      }
-    }
+//   }
 
-    PT_SLEEP(mythread, PTdelay);
-
-  }
-
-  PT_END(mythread);
-}
+//   PT_END(mythread);
+// }
 
 int OLEDThread(struct pt* mythread){
   PT_BEGIN(mythread);
@@ -734,6 +744,29 @@ int servoThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
+
+    if (prevdistance < 20){
+      StopMotors();
+    }
+    if (looking <= 10){
+      myServo.write(dirLeft);
+      Serial.println("Looking left");
+      looking++;
+    }
+    else if (looking <= 20){
+      myServo.write(dirStraight);
+      Serial.println("Looking center");
+      looking++;
+    }
+    else if (looking < 30){
+      myServo.write(dirRight);
+      Serial.println("Looking right");
+      looking++;
+    }
+    else if (looking == 30){
+      looking = 0;
+    }
+
     if (trigTriggerCount == 0){
       // Set the trigPin condition
       digitalWrite(trigPin, LOW);
@@ -754,36 +787,13 @@ int servoThread(struct pt* mythread){
       duration = pulseIn(echoPin, HIGH);
       // Calculating the distance
       distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+      prevdistance = distance;
       // Displays the distance on the Serial Monitor
       Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
       trigTriggerCount = 0;
 
       PT_SLEEP(mythread, PTdelay);
 
-    }
-
-    if (Serial2.available()) {
-      char cmd = Serial2.read();
-      //servo shit
-
-      switch (cmd) {
-        case 'A':
-          myServo.write(dirRight);
-          Serial.println("Looking right");
-          break;
-
-        case 'C':
-          myServo.write(dirStraight);
-          Serial.println("Centered");
-          break;
-
-        case 'D':
-          myServo.write(dirLeft);
-          Serial.println("Looking left");
-          break;
-      }
-    
-      PT_SLEEP(mythread, PTdelay);
     }
   }
   PT_END(mythread);
@@ -857,7 +867,7 @@ void setup() {
 // ============================
 void loop() {
   PT_SCHEDULE(servoThread(&ptServo));
-  PT_SCHEDULE(movementThread(&ptMovement));
+  //PT_SCHEDULE(movementThread(&ptMovement));
   PT_SCHEDULE(cameraThread(&ptCamera));
   //PT_SCHEDULE(musicThread(&ptMusic));
   PT_SCHEDULE(blinkThread(&ptBlink));
