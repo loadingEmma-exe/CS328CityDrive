@@ -610,47 +610,21 @@ int cameraThread(struct pt* mythread){ //barcode scanning
 
         case 0: case 15: //start
           Serial.println("0 Pixy Read, Start");
-          if(movement >= 0 && movement < 40){
-            Accelerate(80);
-            movement++;
-          }
-          else if (movement == 30){
-            Halt(80);
-            movement++;
-          }
         break;
-
         case 1: //Turn Right
-          if(movement > 30 && movement < 70){
-            Right(150);
-            movement++;
-          }
-          // else if (movement >= 70 && movement < 120){
-          //   Accelerate(100);
-          //   movement++;
-          // }
-          // else if (movement >= 120){
-          //   Halt(100);
-          //   movement++;
-          // }
           Serial.println("1 Pixy Read, Right");
         break;
-
         case 2: //U turn right
           Serial.println("2 Pixy Read, Right U turn");
-          //Right();
         break;
         case 3: case 14: //U turn left
           Serial.println("3 Pixy Read, Left U turn");
-          //Left();
         break;
         case 4: //Turn Left
           Serial.println("4 Pixy Read, Left turn");
-          //Left();
         break;
         case 5: //stop
           Serial.println("5 Pixy Read, Stop");
-          //Halt();
         break;
         default:
           Serial.println("Default Pixy Read");
@@ -714,18 +688,32 @@ int musicThread(struct pt* mythread){
   PT_END(mythread);
 }
 
-// int movementThread(struct pt* mythread){ //NOT TESTED
-//   PT_BEGIN(mythread);
+int movementThread(struct pt* mythread){ //NOT TESTED
+  PT_BEGIN(mythread);
 
-//   for(;;){
-    
+  for(;;){
+    if (movement < 5 && movement >= 0){
+      Accelerate(100);
+      movement++;
+      PT_SLEEP(mythread, PTdelay);
+    }
+    else if (movement < 9 && movement >= 5){
+      Right(125);
+      movement++;
+      PT_SLEEP(mythread, PTdelay);
+    }
+    else if (movement < 30 && movement >= 7){
+      Accelerate(100);
+      movement++;
+      PT_SLEEP(mythread, PTdelay);
+    }
 
-//     PT_SLEEP(mythread, PTdelay);
+    PT_SLEEP(mythread, PTdelay);
 
-//   }
+  }
 
-//   PT_END(mythread);
-// }
+  PT_END(mythread);
+}
 
 int OLEDThread(struct pt* mythread){
   PT_BEGIN(mythread);
@@ -866,10 +854,10 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  //PT_SCHEDULE(servoThread(&ptServo));
-  //PT_SCHEDULE(movementThread(&ptMovement));
+  PT_SCHEDULE(servoThread(&ptServo));
+  PT_SCHEDULE(movementThread(&ptMovement));
   PT_SCHEDULE(cameraThread(&ptCamera));
-  //PT_SCHEDULE(musicThread(&ptMusic));
+  PT_SCHEDULE(musicThread(&ptMusic));
   PT_SCHEDULE(blinkThread(&ptBlink));
   // PT_SCHEDULE(OLEDThread(&ptOLED));
 }
