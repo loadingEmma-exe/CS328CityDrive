@@ -64,6 +64,34 @@ byte RArrow[8] = { //Robot's right arrow sprite.
 // Movement Defintions
 //========================
 
+//Ultrasonic sensor
+#define echoPin 22
+#define trigPin 23
+long duration;
+float distance;
+
+//protothreads
+int PTdelay = 100;
+
+pt ptBlink;
+pt ptCamera;
+pt ptMovement;
+pt ptMusic;
+pt ptOLED;
+
+//Turn Defs
+int right = 0;
+int left = 0;
+int moving = 0;
+int hazards = 0;
+
+//Timer
+int globalTime = 0;
+int ptTime = 0;
+
+//Buzzer pin
+int buzzer = 11;
+
 // Motor pins
 #define MotorPWM_L 4   // left motor PWM
 #define MotorPWM_R 5   // right motor PWM
@@ -825,6 +853,12 @@ void setup() {
   Serial2.begin(BLUETOOTH_BAUD_RATE);
   pixy.init();
   pixy.changeProg("line");
+
+  //Ultrasonic sensor
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  // Serial.println("Commands: L (left), C (center), R (right)");
 
   //Ultrasonic sensor
   pinMode(trigPin, OUTPUT);
