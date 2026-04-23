@@ -1,5 +1,12 @@
 //Includes the Arduino Stepper Library
 #include <Servo.h>
+#include <Pixy2.h>
+#include <Wire.h>
+#include "protothreads.h"
+#include "SoftwareSerial.h"
+#include "Adafruit_TCS34725.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 //Music note definitions
 #define NOTE_B0  31
@@ -95,8 +102,41 @@
 
 #define echoPin 22
 #define trigPin 23
+
+#define MotorPWM_A 4 //left motor
+#define MotorPWM_B 5 //right motor
+#define BLUETOOTH_BAUD_RATE 38400
+
+// Motor pins
+#define MotorPWM_L 4   // left motor PWM
+#define MotorPWM_R 5   // right motor PWM
+#define INA1A 32
+#define INA2A 34
+#define INA1B 30
+#define INA2B 36
+
+//Color sensors
+#define LEFT_SENSOR_CHANNEL    0
+#define CENTER_SENSOR_CHANNEL  1
+#define RIGHT_SENSOR_CHANNEL   2
+#define RGBLED 48
+
+//Ultrasonic sensor variables
 long duration;
 float distance;
+
+//Black line detection threshold
+int threshold = 20;
+bool sensorToggle = false;
+
+//Pixy2 Camera declaration
+Pixy2 pixy;
+
+//Sensor object
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS,TCS34725_GAIN_1X);
+
+//
+uint16_t r, g, b, c;
 
 /*Buzzer Music Stuff*/
 
@@ -106,23 +146,23 @@ int tempo = 125;
 //Buzzer pin
 int buzzer = 11;
 
-// int melody[] = { //Dearly Beloved - Kingdom Hearts 1
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
+int melody1[] = { //Dearly Beloved - Kingdom Hearts 1
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
 
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
-//   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
+  NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,4,
 
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_G5,4,
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_G5,4,
 
-//   NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
+  NOTE_F5,16, NOTE_G5,16, NOTE_F5,16,
 
-//   NOTE_F5,8,
+  NOTE_F5,8,
 
-//   NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
-//   NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
-// };
+  NOTE_DS5,4, NOTE_DS5,8, NOTE_D5,8, NOTE_D5,8,
+  NOTE_C5,4,  NOTE_C5,8,  NOTE_AS4,4
+};
 
 int melody[] = { //Final Fantasy Victory Jingle
   NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
@@ -130,34 +170,73 @@ int melody[] = { //Final Fantasy Victory Jingle
   NOTE_E5,4
 };
 
-int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+int melody2[] = { //Amaurot (Neath Dark Waters - FFXIV)
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_FS4, 8, NOTE_G4, 4, NOTE_A4, 2,
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_G4, 8, NOTE_C5, 8, NOTE_B4, 8, NOTE_G4, 4, NOTE_A4, 2,
+
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_FS4, 8, NOTE_G4, 4, NOTE_A4, 2,
+  NOTE_FS4, 8, NOTE_G4, 8, NOTE_A4, 8, NOTE_A4, 2, NOTE_D4, 8, NOTE_A4, 8, NOTE_C5, 8, NOTE_B4, 8, NOTE_C5, 4, NOTE_D5, 2,
+
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_AS4, 4, NOTE_C5, 2,
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_AS4, 8, NOTE_DS5, 8, NOTE_D5, 8, NOTE_AS4, 8, NOTE_C5, 2,
+
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_AS4, 4, NOTE_C5, 2,
+  NOTE_A4, 8, NOTE_AS4, 8, NOTE_C5, 8, NOTE_C5, 2, NOTE_F4, 8, NOTE_C5, 8, NOTE_DS5, 8, NOTE_D5, 4, NOTE_DS5, 8, NOTE_F5, 2,
+};
+
+int melody3[] = { //Eternal Wind - FF3
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8, 
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8, 
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+  
+  NOTE_D5, 2, NOTE_G5, 4, NOTE_E5, 2, NOTE_C5, 4, NOTE_D5, 4, NOTE_E5, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D5, 2, NOTE_E5, 4, NOTE_C5, 2, NOTE_D5, 4, NOTE_B4, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8, 
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+  
+  NOTE_D5, 2, NOTE_G5, 4, NOTE_E5, 2, NOTE_C5, 4, NOTE_D5, 4, NOTE_E5, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_D5, 2, NOTE_E5, 4, NOTE_C5, 2, NOTE_D5, 4, NOTE_B4, 2,
+
+  NOTE_D4, 16, NOTE_G4, 16, NOTE_D4, 16, NOTE_E4, 16, NOTE_C4, 16, NOTE_A3, 8,
+  NOTE_A4, 16, NOTE_C5, 16, NOTE_E4, 16, NOTE_B4, 16, NOTE_E4, 16, NOTE_G4, 16, NOTE_A4, 8,
+
+  NOTE_B4, 16, NOTE_C5, 16, NOTE_D5, 16, NOTE_E5, 16, NOTE_FS5, 16, NOTE_GS5, 16, NOTE_A5, 2,
+  NOTE_E5, 16, NOTE_E5, 16, NOTE_G5, 16, NOTE_A5, 8, NOTE_C6, 8, NOTE_B5, 8, NOTE_G5, 8, NOTE_A5, 2, 
+  NOTE_E5, 4, NOTE_D5, 8, NOTE_E5, 2,
+
+  NOTE_E5, 4, NOTE_G5, 8, NOTE_G5, 4, NOTE_D5, 8, NOTE_D5, 16, NOTE_D5, 16, NOTE_E5, 16, NOTE_F5, 4,
+  NOTE_F5, 4, NOTE_E5, 4, NOTE_D5, 4, NOTE_E5, 2, NOTE_GS5, 2,
+
+  NOTE_A5, 2, NOTE_E5, 8, NOTE_E5, 8, NOTE_G5, 8, NOTE_A5, 4, NOTE_C6, 4, NOTE_B5, 4, NOTE_G5, 4, 
+  NOTE_A5, 2, NOTE_E5, 4, NOTE_D5, 8, NOTE_E5, 2, NOTE_A5, 2, NOTE_A5, 8, NOTE_G5, 8, NOTE_F5, 8,
+  NOTE_E5, 4, NOTE_D5, 4, NOTE_D5, 16, NOTE_C5, 4, NOTE_D5, 4, NOTE_E5, 2, 
+
+
+  };
 
 // this calculates the duration of a whole note in ms
 int wholenote = (60000 * 4) / tempo;
 int divider = 0, noteDuration = 0;
 
-/*Servomotor*/
-Servo myServo;
-// Defines the number of steps per rotation
+void ffVictory()
+{
+  int notes = sizeof(melody) / sizeof(melody[0]) / 2;
 
-// Servo angles
-int dirLeft = 120;
-int dirStraight = 95;
-int dirRight = 60;
-
-void setup() {
-  //Servomotor Setup
-  Serial.begin(9600);
-  myServo.attach(13); //Pin for servomotor input.
-  myServo.write(dirStraight); // start centered
-
-  // Serial.println("Commands: L (left), C (center), R (right)");
-
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  Serial.begin(9600);
-
-for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
 
   divider = melody[i + 1];
 
@@ -171,41 +250,415 @@ for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
   delay(noteDuration);
   noTone(buzzer);
   delay(20);
+  }
 }
 
+void Amaurot()
+{
+  int notes = sizeof(melody2) / sizeof(melody2[0]) / 2; 
+  for (int i = 0; i < sizeof(melody2) / sizeof(melody2[0]); i += 2) {
+
+  divider = melody2[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody2[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
 }
+
+void dearlyBeloved()
+{
+  int notes = sizeof(melody1) / sizeof(melody1[0]) / 2; 
+  for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
+
+  divider = melody1[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody1[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+void eternalWind()
+{
+  int notes = sizeof(melody3) / sizeof(melody3[0]) / 2; 
+  for (int i = 0; i < sizeof(melody3) / sizeof(melody3[0]); i += 2) {
+
+  divider = melody3[i + 1];
+
+  if (divider > 0) {
+    noteDuration = wholenote / divider;
+  } else {
+    noteDuration = (wholenote / abs(divider)) * 1.5;
+  }
+
+  tone(buzzer, melody3[i], noteDuration);
+  delay(noteDuration);
+  noTone(buzzer);
+  delay(20);
+  }
+}
+
+
+
+
+/*Servomotor*/
+Servo myServo;
+// Defines the number of steps per rotation
+
+// Servo angles
+int dirLeft = 120;
+int dirStraight = 95;
+int dirRight = 60;
+
+bool lineMode = false;
+// ============================
+// Motor control
+// ============================
+void Forward(int speed) {
+  analogWrite(MotorPWM_L, speed);
+  analogWrite(MotorPWM_R, speed);
+
+  // Left motor forward
+  digitalWrite(INA1A, HIGH);
+  digitalWrite(INA2A, LOW);
+
+  // Right motor forward
+  digitalWrite(INA1B, HIGH);
+  digitalWrite(INA2B, LOW);
+}
+
+void Backward(int speed) {
+  analogWrite(MotorPWM_L, speed);
+  analogWrite(MotorPWM_R, speed);
+
+  // Left motor backward
+  digitalWrite(INA1A, LOW);
+  digitalWrite(INA2A, HIGH);
+
+  // Right motor backward
+  digitalWrite(INA1B, LOW);
+  digitalWrite(INA2B, HIGH);
+}
+
+void Left(int speed) 
+{
+  analogWrite(MotorPWM_L, speed);
+  analogWrite(MotorPWM_R, speed - 20);
+  
+  // Left motor backward
+  digitalWrite(INA1A, LOW);
+  digitalWrite(INA2A, HIGH);
+
+  // Right motor forward
+  digitalWrite(INA1B, HIGH);
+  digitalWrite(INA2B, LOW);
+}
+
+void Right(int speed)
+{
+  analogWrite(MotorPWM_L, speed - 20);
+  analogWrite(MotorPWM_R, speed);
+  
+  // Left motor forward
+  digitalWrite(INA1A, HIGH);
+  digitalWrite(INA2A, LOW);
+
+  // Right motor backward
+  digitalWrite(INA1B, LOW);
+  digitalWrite(INA2B, HIGH);
+}
+
+void StopMotors() {
+  analogWrite(MotorPWM_L, 0);
+  analogWrite(MotorPWM_R, 0);
+
+  digitalWrite(INA1A, LOW);
+  digitalWrite(INA2A, LOW);
+  digitalWrite(INA1B, LOW);
+  digitalWrite(INA2B, LOW);
+}
+
+void Halt(int startSpeed)
+{
+  for (int s = startSpeed; s > 0; s -= 20) {
+    Forward(s);
+    delay(20);
+  }
+  StopMotors();
+  
+}
+
+void Turn(int maxSpeed, int turnTime)
+{
+  for (int s = 80; s <= maxSpeed; s += 20) {
+    Right(s);
+    delay(20);
+  }
+  delay(turnTime);  // actual turning duration
+  StopMotors();
+}
+
+void Accelerate(int maxSpeed)
+{
+  for (int s = 80; s <= maxSpeed; s += 20) {
+    Forward(s);
+    delay(20);
+  }
+}
+
+void pixyBarcode()
+{
+  pixy.line.getAllFeatures(); //get line features
+  // pixy.line.getMainFeatures(); // Could use this too
+  if (pixy.line.barcodes) // detected road sign
+  {
+  int code = pixy.line.barcodes[0].m_code;
+    if (code == 0)
+    {
+      Serial.println("Going forward.");
+      ffVictory();
+    }
+    else if (code == 14)
+    {
+      Serial.println("Turning Right..");
+      Amaurot();
+    }
+    else if (code == 4)
+    {
+      Serial.println("Turning Left..");
+      dearlyBeloved();
+    }
+  }
+}
+
+// ==================================================
+// SELECT TCA9548A CHANNEL
+// Switches which sensor is active
+// ==================================================
+void tcaSelect(uint8_t channel)
+{
+  Wire.beginTransmission(0x70); // TCA9548A default address
+  Wire.write(1 << channel);     // Enable selected channel
+  Wire.endTransmission();
+}
+
+// ==================================================
+// CHECK IF SENSOR SEES BLACK LINE
+// Returns true if dark surface detected
+// ==================================================
+bool blackDetected(uint8_t channel)
+{
+  tcaSelect(channel);   // Select requested sensor
+  delay(20);           // Wait for channel switch
+
+  tcs.begin();         // Reinitialize sensor on that channel
+
+  uint16_t r, g, b, c;
+  tcs.getRawData(&r, &g, &b, &c); // Read sensor values
+
+  Serial.println(c);   // Print brightness value for debugging
+
+  return (c < threshold); // If darker than threshold = black line
+}
+
+// ==================================================
+// READ BRIGHTNESS VALUE ONLY
+// Returns CLEAR channel value
+// Used for testing/calibration
+// ==================================================
+uint16_t readClear(uint8_t channel)
+{
+  tcaSelect(channel);
+  delay(15);
+
+  tcs.begin();
+  delay(5);
+
+  tcs.getRawData(&r, &g, &b, &c);
+
+  return c; // Return brightness value
+}
+
+void lineReact()
+{
+  int leftValue = readClear(LEFT_SENSOR_CHANNEL);
+  int centerValue = readClear(CENTER_SENSOR_CHANNEL);
+  int rightValue = readClear(RIGHT_SENSOR_CHANNEL);
+
+  //Debug
+  Serial.print("L:");
+  Serial.println(leftValue);   // Left sensor brightness
+
+  Serial.print(" C:");
+  Serial.println(centerValue);   // Center sensor brightness
+
+  Serial.print(" R:");
+  Serial.println(rightValue); // Right sensor brightness
+
+  if (centerValue <= 3 || leftValue <= 3 && rightValue <= 3)
+  {
+    Backward(60);
+    Serial.println("Backing..");
+
+  }
+  else if  (leftValue <= 3)
+  {
+    Backward(60);
+    delay(500);
+    Right(60);
+    Serial.println("Backing + turning right..");
+
+  }
+  else if (rightValue <= 3)
+  {
+    Backward(60);
+    delay(500);
+    Left(60);
+    Serial.println("Backing + turning left");
+    
+  }
+  else
+  {
+    Forward(60);
+    Serial.println("Forwards..");
+  }
+}
+
+void setup() 
+{
+  Serial.begin(9600);
+  pixy.init();
+  pixy.changeProg("line");
+  Serial2.begin(BLUETOOTH_BAUD_RATE);
+  Wire.begin();
+  delay(50);
+
+  // Motor pins
+  pinMode(MotorPWM_L, OUTPUT);
+  pinMode(MotorPWM_R, OUTPUT);
+  pinMode(INA1A, OUTPUT);
+  pinMode(INA2A, OUTPUT);
+  pinMode(INA1B, OUTPUT);
+  pinMode(INA2B, OUTPUT);
+
+  //Line Sensor pins
+  pinMode(RGBLED, OUTPUT);
+  digitalWrite(RGBLED, HIGH);
+  // Start by selecting left sensor
+  tcaSelect(0);
+
+  // Check if sensor responds
+  if (!tcs.begin())
+    Serial.println("No sensor");
+  else
+    Serial.println("Sensor OK");
+
+  StopMotors();
+  delay(1000);
+
+  Serial.begin(9600);
+  Serial2.begin(BLUETOOTH_BAUD_RATE);
+
+   //Servomotor Setup
+  Serial.begin(9600);
+  myServo.attach(13); //Pin for servomotor input.
+  myServo.write(dirStraight); // start centered
+
+  // Serial.println("Commands: L (left), C (center), R (right)");
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  Serial.begin(9600);
+  ffVictory();
+}
+
 
 void loop() {
-  if (Serial.available() > 0) {
-    char cmd = Serial.read();
+  digitalWrite(RGBLED, HIGH);
+  if (Serial2.available() > 0) {
+    char cmd = Serial2.read();
 
-    if (cmd == 'L' || cmd == 'l') {
-      myServo.write(dirLeft);
-      Serial.println("Moved Left");
-    }
-    else if (cmd == 'C' || cmd == 'c') {
-      myServo.write(dirStraight);
-      Serial.println("Centered");
-    }
-    else if (cmd == 'R' || cmd == 'r') {
-      myServo.write(dirRight);
-      Serial.println("Moved Right");
+   switch (cmd)
+    {
+      case 'F':
+        Forward(128);
+        break;
+      
+      case 'S':
+        StopMotors();
+        break;
+
+      case 'L':
+        Left(100);
+        break;
+
+      case 'R':
+        Right(100);
+        break;
+
+      case 'A':
+        myServo.write(dirRight);
+        Serial.println("Looking right");
+        break;
+
+      case 'C':
+        myServo.write(dirStraight);
+        Serial.println("Centered");
+        break;
+
+      case 'D':
+        myServo.write(dirLeft);
+        Serial.println("Looking left");
+        break;
+
+      case 'X':
+        pixyBarcode();
+        eternalWind();
+        break;
+      
+      case 'P':
+        sensorToggle = true;
+        break;
+        Amaurot();
+      case 'O':
+        sensorToggle = false;
+        StopMotors();
+        break;
     }
   }
 
-    // Set the trigPin condition
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  // The pulseIn function times the signal return after bouncing off the object
-  duration = pulseIn(echoPin, HIGH);
-  // Calculating the distance
-  distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
-  // Displays the distance on the Serial Monitor
-  Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
-  delay(100);
+    if (sensorToggle)
+    {
+      lineReact();
+    }
 
+    // Set the trigPin condition
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    // The pulseIn function times the signal return after bouncing off the object
+    duration = pulseIn(echoPin, HIGH);
+    // Calculating the distance
+    distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+    // Displays the distance on the Serial Monitor
+//Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+    delay(100);
 }

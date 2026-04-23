@@ -1,11 +1,21 @@
-//From LAB 5 PWM Motor.c.txt
-// Pins for all inputs, keep in mind the PWM defines must be on PWM pins
-
+#include <SPI.h>
+#include <Wire.h>
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_GFX.h"
 #include "protothreads.h" //protothreading
 #include <SoftwareSerial.h>
 #include <Servo.h>
+#include <Pixy2.h>
+
+//========================
+// Bluetooth Defintions
+//========================
+
+#define BLUETOOTH_BAUD_RATE 38400
+
+//========================
+// OLED Defintions
+//========================
 
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -15,6 +25,8 @@
 
 #define LOGO_WIDTH 8 // OLED display width, in pixels
 #define LOGO_HEIGHT 8 // OLED display height, in pixels
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init display
 
 //Color definitions
 #define BLACK 0x000000
@@ -26,9 +38,31 @@
 #define YELLOW 0xFFFF00
 #define WHITE 0xFFFFF
 
-#define MotorPWM_A 4 //left motor
-#define MotorPWM_B 5 //right motor
-#define BLUETOOTH_BAUD_RATE 38400
+byte LArrow[8] = { //Robot's left arrow sprite.
+  0b00000000,
+  0b00110000,
+  0b00111100,
+  0b01111110,
+  0b00111100,
+  0b00110000,
+  0b00000000,
+  0b00000000
+};
+
+byte RArrow[8] = { //Robot's right arrow sprite.
+  0b00000000,
+  0b00001100,
+  0b00111100,
+  0b01111110,
+  0b00111100,
+  0b00001100,
+  0b00000000,
+  0b00000000
+};
+
+//========================
+// Movement Defintions
+//========================
 
 //Ultrasonic sensor
 #define echoPin 22
@@ -66,15 +100,53 @@ int buzzer = 11;
 #define INA1B 30
 #define INA2B 36
 
+// Movement indicators
+int right = 0;
+int left = 0;
+int moving = 0;
+int hazards = 0;
+int movement = 0;
+
+//========================
+// Timer Defintions
+//========================
+
+int projectTime = 0;
+int preprojectTime;
+int ptTime = 0;
+
+//========================
+// Buzzer Defintions
+//========================
+int buzzer = 11;
+
+//========================
+// LED Defintions
+//========================
+
 //LED pins
 #define LEFTREAR 31
 #define LEFTFRONT 49
 #define RIGHTREAR 37
 #define RIGHTFRONT 43
 
-// Encoder pins
+int rON = 0;
+int lON = 0;
+int fON = 0;
+int bON = 0;
+int hON = 0;
+
+//========================
+// Encoder Defintions
+//========================
+
+//Encoder pins
 #define ENCODER_LEFT  2
 #define ENCODER_RIGHT 3
+
+//========================
+// Music Defintions
+//========================
 
 //Music note definitions
 #define NOTE_B0  31
@@ -168,49 +240,6 @@ int buzzer = 11;
 #define NOTE_DS8 4978
 #define REST      0
 
-//Ultrasonic Pins
-#define echoPin 22
-#define trigPin 23
-
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //init display
-//=============================
-// Music
-//=============================
-
-int melody[] = { //Final Fantasy Victory Jingle
-  NOTE_E5, 16, NOTE_E5,16, NOTE_E5, 16,
-  NOTE_E5,8, NOTE_C5,8, NOTE_D5,8, NOTE_E5,16, NOTE_D5,16,
-  NOTE_E5,4
-};
-
-int notes = sizeof(melody) / sizeof(melody[0]) / 2;
-
-// this calculates the duration of a whole note in ms
-int wholenote = (60000 * 4) / tempo;
-int divider = 0, noteDuration = 0;
-
-//============================
-// Servo
-//============================
-
-/*Servomotor*/
-Servo myServo;
-// Defines the number of steps per rotation
-
-// Servo angles
-int dirLeft = 120;
-int dirStraight = 95;
-int dirRight = 60;
-
-// ============================
-// Encoder counters
-// ============================
-volatile long count_left = 0;
-volatile long count_right = 0;
-
-// ============================
-/*Buzzer Music Stuff*/
-// ============================
 int melody1[] = { //Dearly Beloved - Kingdom Hearts 1
   NOTE_C5,4,  NOTE_C5,8,  NOTE_G4,8,  NOTE_G4,8,
   NOTE_F4,4,  NOTE_F4,8,  NOTE_D5,4,  NOTE_D5,8,
@@ -235,7 +264,6 @@ int melody[] = { //Final Fantasy Victory Jingle
   NOTE_E5,4
 };
 
-
 // change this to make the song slower or faster
 int tempo = 125;
 int notes = sizeof(melody) / sizeof(melody[0]) / 2;
@@ -247,14 +275,105 @@ int divider = 0, noteDuration = 0;
 // sample time in ms
 const unsigned long sampleTime = 100;
 
-/*Servomotor*/
+int songFF = 0; //in camera, will turn to 1. When played will turn to 0
+int FFNOTE = sizeof(melody) / sizeof(melody[0]);
+
+int songDB = 0;
+int KHNOTE;
+
+int songAM = 0;
+int AMNOTE;
+
+//========================
+// Servo Defintions
+//========================
+
 Servo myServo;
-// Defines the number of steps per rotation
 
 // Servo angles
 int dirLeft = 120;
 int dirStraight = 95;
 int dirRight = 60;
+
+//========================
+// UltraSonic Defintions
+//========================
+
+#define echoPin 22
+#define trigPin 23
+
+//Ultrasonic sensor variables
+long duration;
+float distance;
+int trigTriggerCount; //if 0 --> low, 1 --> high, 2 --> low
+
+//========================
+// Protothreads Defintions
+//========================
+int PTdelay = 100;
+
+pt ptBlink;
+pt ptCamera;
+pt ptMovement;
+pt ptMusic;
+pt ptOLED;
+pt ptServo;
+
+//=======================
+// Line Sensor Defintions
+//=======================
+
+// //line sensors themselves
+// #define LNSensorL  8  // left sensor 
+// #define LNSensorC  7  // center sensor 
+// #define LNSensorR  6  // right sensor 
+
+// //Line Sensor pins for the little lights
+// pinMode(LNSensorL, INPUT);
+// pinMode(LNSensorC, INPUT);
+// pinMode(LNSensorR, INPUT);
+// //pinMode(RGBLED, OUTPUT);
+
+//========================
+// Pixy Camera Defintions
+//========================
+
+int looking = 0;
+int prevdistance = 100;
+Pixy2 pixy;
+
+void pixyBarcode(){
+  pixy.line.getAllFeatures(); //get line features
+  // pixy.line.getMainFeatures(); // Could use this too
+  if (pixy.line.barcodes) // detected road sign
+  {
+    int code = pixy.line.barcodes[0].m_code;
+    switch (code){
+      case 0:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 1:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 2:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 3:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 4:
+        Serial.println(code + " Pixy Read");
+      break;
+      case 5:
+        Serial.println(code + " Pixy Read");
+      break;
+      default:
+        Serial.println("Default Pixy Read");
+      break;
+    }
+  }
+}
+
 // ============================
 // Light control
 // ============================
@@ -272,9 +391,17 @@ void ONLights(){
   digitalWrite(RIGHTFRONT, HIGH);
 }
 
-void HEADLights(){
-  digitalWrite(LEFTFRONT, HIGH);
-  digitalWrite(RIGHTFRONT, HIGH);
+void HEADLights(int side = 0){
+  if (side == -1){ //left side
+    digitalWrite(LEFTFRONT, HIGH);
+  }
+  else if (side == 1){ //right side
+    digitalWrite(RIGHTFRONT, HIGH);
+  }
+  else{
+    digitalWrite(RIGHTFRONT, HIGH);
+    digitalWrite(LEFTFRONT, HIGH);
+  }
 }
 
 void BREAKLights(){
@@ -292,9 +419,10 @@ void LEFTLights(){
   digitalWrite(LEFTFRONT, HIGH);
 }
 
-// Method: writetext
-// Input: x position
-// Print Lab Text across the screen
+// ============================
+// OLED control
+// ============================
+
 void writetext(int x) { 
   String text = "Lab 4 by: Emma Raymond Austin Hoang";
 
@@ -429,9 +557,115 @@ int blinkThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
+    if(moving){
+      OFFLights();
+      HEADLights();
+      projectTime = 0;
+    }
+
+    if(!moving){
+      projectTime += 100;
+      BREAKLights();
+    }
+
+    if(rON && right){ //if turning right and need to blink off
+      OFFLights();
+      HEADLights(-1);
+      rON = !rON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+    
+    if(!rON && right) { //if turning right and need to blink on
+      OFFLights();
+      HEADLights(-1);
+      RIGHTLights();
+      rON = !rON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(lON && left){ //if turning left and need to blink off
+      OFFLights();
+      HEADLights(1);
+      lON = !lON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(!lON && left) { //if turning left and need to blink on
+      OFFLights();
+      HEADLights(1);
+      LEFTLights();
+      lON = !lON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(projectTime >= 2000){
+      hON = !hON;
+    }
+
+    if(projectTime >= 2000 && hON){ //if hazards and needs to blink off
+      OFFLights();
+      hON = !hON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
+    if(projectTime >= 2000 && !hON){ //if hazards and needs to blink on
+      HEADLights(1);
+      LEFTLights();
+      lON = !lON;
+
+      HEADLights(-1);
+      RIGHTLights();
+      rON = !rON;
+      PT_SLEEP(mythread, PTdelay);
+    }
+
     PT_SLEEP(mythread, PTdelay);
-    //action
+  }
+
+  PT_END(mythread);
+}
+
+int cameraThread(struct pt* mythread){ //barcode scanning
+  PT_BEGIN(mythread);
+  PT_SLEEP(mythread, 1500);  
+
+  for(;;){
+    pixy.line.getAllFeatures(); //get line features
+
+    if (pixy.line.barcodes) // detected road sign
+    {
+      int code = pixy.line.barcodes[0].m_code;
+      switch (code){
+
+        case 0: case 15: //start
+          Serial.println("0 Pixy Read, Start");
+          movement = 0;
+        break;
+        case 1: //Turn Right
+          Serial.println("1 Pixy Read, Right");
+          movement = 1;
+        break;
+        case 2: //U turn right
+          Serial.println("2 Pixy Read, Right U turn");
+          movement = 2;
+        break;
+        case 3: case 14: //U turn left
+          Serial.println("3 Pixy Read, Left U turn");
+          movement = 3;
+        break;
+        case 4: //Turn Left
+          Serial.println("4 Pixy Read, Left turn");
+          movement = 4;
+        break;
+        case 5: //stop
+          Serial.println("5 Pixy Read, Stop");
+          movement = 5;
+        break;
+        default:
+          Serial.println("Default Pixy Read");
+        break;
+      }
+    }
     PT_SLEEP(mythread, PTdelay);
   }
 
@@ -442,60 +676,187 @@ int musicThread(struct pt* mythread){
   PT_BEGIN(mythread);
 
   for(;;){
-    //action
-    PT_SLEEP(mythread, PTdelay);
-    //action
+    switch (FFNOTE){
+      case 0:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 1:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 2:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 3:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 4:
+        tone(buzzer, NOTE_C5, noteDuration);
+        FFNOTE++;
+        break;
+      case 5:
+        tone(buzzer, NOTE_D5, noteDuration);
+        FFNOTE++;
+        break;
+      case 6:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      case 7:
+        tone(buzzer, NOTE_D5, noteDuration);
+        FFNOTE++;
+        break;
+      case 8:
+        tone(buzzer, NOTE_E5, noteDuration);
+        FFNOTE++;
+        break;
+      default:
+        FFNOTE = 0;
+        break;
+    }
     PT_SLEEP(mythread, PTdelay);
   }
 
   PT_END(mythread);
 }
 
-// ============================
-// SETUP 
-// ============================
-void ffVictory()
-{
-    for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
+int movementThread(struct pt* mythread){
+  PT_BEGIN(mythread);
 
-    divider = melody[i + 1];
+  for(;;){
 
-    if (divider > 0) {
-      noteDuration = wholenote / divider;
-    } else {
-      noteDuration = (wholenote / abs(divider)) * 1.5;
+    switch(movement){
+
+      //Forward
+      case 0:
+        Forward(100);
+        PT_SLEEP(mythread, 60);
+        StopMotors();
+      break;
+
+      //Right turn + forward
+      case 1:
+        Right(130);
+        PT_SLEEP(mythread, 550);
+        StopMotors();
+        movement = 0;
+      break;
+
+      //Right U-Turn
+      case 2:
+        Right(130);
+        PT_SLEEP(mythread, 30);
+        Forward(60);
+        PT_SLEEP(mythread, 30);
+        Right(130);
+        Forward(100);
+        movement = 0;
+      break;
+
+      //Left U-Turn
+      case 3:
+        Right(130);
+        PT_SLEEP(mythread, 800);
+        movement = 1;
+      break;
+
+      // LEFT UTURN
+      case 4:
+        Left(130);
+        PT_SLEEP(mythread, 800);
+        movement = 1;
+      break;
+
+      // LEFT TURN
+      case 5:
+       StopMotors();
+      break;
     }
 
-    tone(buzzer, melody[i], noteDuration);
-    delay(noteDuration);
-    noTone(buzzer);
-    }
+    PT_SLEEP(mythread, 20);
+  }
+  PT_END(mythread);
+
 }
 
-void dearlyBeloved()
-{
-    for (int i = 0; i < sizeof(melody1) / sizeof(melody1[0]); i += 2) {
 
-    divider = melody1[i + 1];
 
-    if (divider > 0) {
-      noteDuration = wholenote / divider;
-    } else {
-      noteDuration = (wholenote / abs(divider)) * 1.5;
+int servoThread(struct pt* mythread){
+  PT_BEGIN(mythread);
+
+  for(;;){
+
+    if (prevdistance < 20){
+      StopMotors();
+    }
+    if (looking <= 10){
+      myServo.write(dirLeft);
+      Serial.println("Looking left");
+      looking++;
+    }
+    else if (looking <= 20){
+      myServo.write(dirStraight);
+      Serial.println("Looking center");
+      looking++;
+    }
+    else if (looking < 30){
+      myServo.write(dirRight);
+      Serial.println("Looking right");
+      looking++;
+    }
+    else if (looking == 30){
+      looking = 0;
     }
 
-    tone(buzzer, melody1[i], noteDuration);
-    delay(noteDuration);
-    noTone(buzzer);
+    if (trigTriggerCount == 0){
+      // Set the trigPin condition
+      digitalWrite(trigPin, LOW);
+      trigTriggerCount++;
+
+      PT_SLEEP(mythread, PTdelay);
     }
+    else if (trigTriggerCount == 1){
+      // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+      digitalWrite(trigPin, HIGH);
+      trigTriggerCount++;
+
+      PT_SLEEP(mythread, PTdelay);
+    }
+    else if (trigTriggerCount == 2){
+      digitalWrite(trigPin, LOW);
+      // The pulseIn function times the signal return after bouncing off the object
+      duration = pulseIn(echoPin, HIGH);
+      // Calculating the distance
+      distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
+      prevdistance = distance;
+      // Displays the distance on the Serial Monitor
+      Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+      trigTriggerCount = 0;
+
+      PT_SLEEP(mythread, PTdelay);
+
+    }
+  }
+  PT_END(mythread);
 }
 
-//Setup function.
+// ============================
+// Setup
+// ============================
 void setup() {
   Serial.begin(9600);
   myServo.attach(13); //Pin for servomotor input.
   myServo.write(dirStraight); // start centered
   Serial2.begin(BLUETOOTH_BAUD_RATE);
+  pixy.init();
+  pixy.changeProg("line");
+
+  //Ultrasonic sensor
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 
   // Serial.println("Commands: L (left), C (center), R (right)");
 
@@ -528,42 +889,24 @@ void setup() {
 
   //pt setup
   PT_INIT(&ptBlink);
-
-  //MUSIC PLAY (NEEDS TO BE PUT IN PROTOTHREAD)
-  for (int i = 0; i < sizeof(melody) / sizeof(melody[0]); i += 2) {
-
-  divider = melody[i + 1];
-
-  if (divider > 0) {
-    noteDuration = wholenote / divider;
-  } else {
-    noteDuration = (wholenote / abs(divider)) * 1.5;
-  }
-
-  tone(buzzer, melody[i], noteDuration);
-  delay(noteDuration);
-  noTone(buzzer);
-  delay(20);
-}
-
-  //attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT), ISRMotorLeft, FALLING);
-  //attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT), ISRMotorRight, FALLING);
-
-  StopMotors();
-  delay(1000);
+  PT_INIT(&ptCamera);
+  PT_INIT(&ptMovement);
+  PT_INIT(&ptMusic);
+  PT_INIT(&ptOLED);
+  PT_INIT(&ptServo);
 
   Serial.begin(9600);
   Serial2.begin(BLUETOOTH_BAUD_RATE);
+
   display.clearDisplay();
   display.display();
 
-   //Servomotor Setup
+  //Servomotor Setup
   Serial.begin(9600);
   myServo.attach(13); //Pin for servomotor input.
   myServo.write(dirStraight); // start centered
 
   // Serial.println("Commands: L (left), C (center), R (right)");
-
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   Serial.begin(9600);
@@ -573,66 +916,10 @@ void setup() {
 // Loop
 // ============================
 void loop() {
-  // Set the trigPin condition
-    digitalWrite(trigPin, LOW);
-    delayMicroseconds(2);
-    // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
-    digitalWrite(trigPin, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigPin, LOW);
-    // The pulseIn function times the signal return after bouncing off the object
-    duration = pulseIn(echoPin, HIGH);
-    // Calculating the distance
-    distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (wave goes and comes back)
-    // Displays the distance on the Serial Monitor
-    Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
-    delay(100);
-
-  // put your main code here, to run repeatedly:
-    if (Serial2.available()) {
-
-    char cmd = Serial2.read();
-
-    switch (cmd)
-    {
-      case 'F': case 'f':
-        Forward(128);
-        break;
-      
-      case 'S': case 's':
-        StopMotors();
-        break;
-
-      case 'L': case 'l':
-        Left(100);
-        break;
-
-      case 'R': case 'r':
-        Right(100);
-        break;
-
-      case 'A': case 'a':
-        myServo.write(dirRight);
-        Serial.println("Looking right");
-        break;
-
-      case 'C': case 'c':
-        myServo.write(dirStraight);
-        Serial.println("Centered");
-        break;
-
-      case 'D': case 'd':
-        myServo.write(dirLeft);
-        Serial.println("Looking left");
-        break;
-      
-      case 'K': case 'k': 
-        dearlyBeloved();
-        break;
-      
-      case 'V': case'v':
-        ffVictory();
-        break;
-    }
-  }
+  PT_SCHEDULE(servoThread(&ptServo));
+  PT_SCHEDULE(movementThread(&ptMovement));
+  PT_SCHEDULE(cameraThread(&ptCamera));
+  PT_SCHEDULE(musicThread(&ptMusic));
+  PT_SCHEDULE(blinkThread(&ptBlink));
+  // PT_SCHEDULE(OLEDThread(&ptOLED));
 }
