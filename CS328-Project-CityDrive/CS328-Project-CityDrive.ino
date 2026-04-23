@@ -706,7 +706,7 @@ int movementThread(struct pt* mythread){
 
       //Forward
       case 0:
-        Forward(100);
+        Forward(90);
         PT_SLEEP(mythread, 60); //was 60
         StopMotors();
       break;
@@ -727,13 +727,18 @@ int movementThread(struct pt* mythread){
 
       //Right U-Turn
       case 2:
-        Right(130);
-        PT_SLEEP(mythread, 30);
-        Forward(60);
-        PT_SLEEP(mythread, 30);
-        Right(130);
-        Forward(100);
-        movement = 0;
+        // Forward(150);
+        // PT_SLEEP(mythread, 150);
+        Right(150);
+        PT_SLEEP(mythread, 300); //was 550
+        StopMotors();
+        if (movementPeriod > 4 && movement == 1){
+          movementPeriod++;
+        }
+        else{
+          movement = 1;
+          movementPeriod = 0;
+        }
       break;
 
       //Left U-Turn
